@@ -41,41 +41,49 @@ async function hashPassword(password) {
 }
 
 // ============================================================
-// BANCO DE DADOS DE USUÁRIOS
+// BANCO DE DADOS DE USUÁRIOS (Firebase)
 // ============================================================
-function loadAuthUsers() {
+let authUsersDB = [];
+let authLogsDB = [];
+let authUsersLoaded = false;
+
+async function loadAuthUsers() {
+    return new Promise((resolve) => {
+        db.collection("simas_users").onSnapshot((snapshot) => {
+            authUsersDB = snapshot.docs.map(doc => doc.data());
+            authUsersLoaded = true;
+            
+            const adminPanel = document.getElementById("admin-panel");
+            if (adminPanel && adminPanel.classList.contains("active")) {
+                renderAdminUsersList();
+            }
+            resolve();
+        });
+    });
+}
+
+async function saveUserToCloud(userObj) {
     try {
-        const stored = SafeStorage.getItem(USERS_DB_KEY);
-        if (stored) {
-            authUsersDB = JSON.parse(stored);
+        await db.collection("simas_users").doc(userObj.id).set(userObj);
+    } catch(e) {
+        console.error("Erro ao salvar usuário:", e);
+    }
+}
+
+async function loadAuthLogs() {
+    db.collection("simas_auth_logs").orderBy("timestamp", "desc").limit(50).onSnapshot((snapshot) => {
+        authLogsDB = snapshot.docs.map(doc => doc.data());
+        
+        const adminPanel = document.getElementById("admin-panel");
+        if (adminPanel && adminPanel.classList.contains("active")) {
+            renderAdminAuthLogs();
         }
-    } catch (e) {
-        authUsersDB = [];
-    }
+    });
 }
 
-function saveAuthUsers() {
-    SafeStorage.setItem(USERS_DB_KEY, JSON.stringify(authUsersDB));
-}
-
-function loadAuthLogs() {
-    try {
-        const stored = SafeStorage.getItem(AUTH_LOGS_KEY);
-        return stored ? JSON.parse(stored) : [];
-    } catch (e) {
-        return [];
-    }
-}
-
-function saveAuthLog(entry) {
-    const logs = loadAuthLogs();
-    logs.unshift(entry);
-    SafeStorage.setItem(AUTH_LOGS_KEY, JSON.stringify(logs.slice(0, 500)));
-}
-
-function addAuthLog(userId, userName, action, detail, ip = 'local') {
-    saveAuthLog({
-        id: 'log-' + Date.now(),
+async function addAuthLog(userId, userName, action, detail, ip = 'local') {
+    const logEntry = {
+        id: 'log-' + Date.now() + Math.floor(Math.random() * 1000),
         timestamp: new Date().toISOString(),
         userId,
         userName,
@@ -83,10 +91,22 @@ function addAuthLog(userId, userName, action, detail, ip = 'local') {
         detail,
         ip,
         userAgent: navigator.userAgent.substring(0, 80)
-    });
+    };
+    try {
+        await db.collection("simas_auth_logs").doc(logEntry.id).set(logEntry);
+    } catch(e) {
+        console.error("Erro log:", e);
+    }
 }
 
-// ============================================================
+function saveAuthUsers() {
+    // Deprecated for global use
+}
+
+function saveAuthLog(entry) {
+    // Deprecated
+}
+
 // INICIALIZAÇÃO DO ADMINISTRADOR MASTER
 // ============================================================
 async function ensureAdminMaster() {
@@ -116,19 +136,18 @@ async function ensureAdminMaster() {
                 exportData: true, uploadDocs: true
             }
         };
-        authUsersDB.unshift(adminUser);
-        saveAuthUsers();
+        await saveUserToCloud(adminUser);
     }
 }
 
-// ============================================================
 // INICIALIZAÇÃO DO SISTEMA DE AUTH
 // ============================================================
 async function initAuthSystem() {
-    loadAuthUsers();
+    await loadAuthUsers();
+    loadAuthLogs();
     await ensureAdminMaster();
 
-    // Verifica sessão ativa
+    // Verifica sessão ativa no localStorage
     try {
         const storedSession = SafeStorage.getItem(SESSION_KEY);
         if (storedSession) {
@@ -147,7 +166,6 @@ async function initAuthSystem() {
     // Exibe tela de login
     showAuthScreen('login');
 }
-
 // ============================================================
 // GERENCIADOR DE TELAS DE AUTH
 // ============================================================
@@ -237,7 +255,7 @@ async function completeAuthLogin(user, createSession = true) {
         if (!authUsersDB[idx].loginHistory) authUsersDB[idx].loginHistory = [];
         authUsersDB[idx].loginHistory.unshift({ timestamp: now, ip: 'local', userAgent: navigator.userAgent.substring(0, 60) });
         authUsersDB[idx].loginHistory = authUsersDB[idx].loginHistory.slice(0, 20);
-        saveAuthUsers();
+        saveUserToCloud(authUsersDB[idx]);
     }
 
     // Cria sessão
@@ -427,7 +445,7 @@ async function handleRegister(event) {
         };
 
         authUsersDB.push(newUser);
-        saveAuthUsers();
+        saveUserToCloud(authUsersDB[idx]);
         addAuthLog(newUser.id, newUser.name, 'CADASTRO', `Novo usuário registrado — Perfil solicitado: ${newUser.roleName}`);
 
         showToast(`Cadastro realizado! Aguarde ativação pelo administrador.`, 'success');
@@ -647,7 +665,7 @@ function activateUser(userId) {
     if (idx < 0) return;
 
     authUsersDB[idx].status = 'ativo';
-    saveAuthUsers();
+    saveUserToCloud(authUsersDB[idx]);
     addAuthLog(currentUser.userId, currentUser.name, 'ATIVAR_USER', `Usuário ${authUsersDB[idx].name} ativado.`);
     showToast(`Usuário ${authUsersDB[idx].name} ativado com sucesso!`, 'success');
     renderAdminPanel();
@@ -659,7 +677,7 @@ function toggleBlockUser(userId, newStatus) {
     if (idx < 0) return;
 
     authUsersDB[idx].status = newStatus;
-    saveAuthUsers();
+    saveUserToCloud(authUsersDB[idx]);
     const action = newStatus === 'bloqueado' ? 'BLOQUEAR_USER' : 'DESBLOQUEAR_USER';
     addAuthLog(currentUser.userId, currentUser.name, action, `Status de ${authUsersDB[idx].name} alterado para ${newStatus}.`);
     showToast(`Usuário ${newStatus === 'bloqueado' ? 'bloqueado' : 'desbloqueado'} com sucesso.`, newStatus === 'bloqueado' ? 'warning' : 'success');
@@ -674,7 +692,7 @@ function deleteAuthUser(userId) {
     if (!confirm(`ATENÇÃO: Excluir permanentemente o usuário "${user.name}"?\nEsta ação não pode ser desfeita.`)) return;
 
     authUsersDB = authUsersDB.filter(u => u.id !== userId);
-    saveAuthUsers();
+    saveUserToCloud(authUsersDB[idx]);
     addAuthLog(currentUser.userId, currentUser.name, 'EXCLUIR_USER', `Usuário ${user.name} (${user.email}) excluído definitivamente.`);
     showToast(`Usuário ${user.name} removido do sistema.`, 'success');
     renderAdminPanel();
@@ -693,7 +711,7 @@ function adminResetPassword(userId) {
         const idx = authUsersDB.findIndex(u => u.id === userId);
         if (idx >= 0) {
             authUsersDB[idx].passwordHash = hash;
-            saveAuthUsers();
+            saveUserToCloud(authUsersDB[idx]);
             addAuthLog(currentUser.userId, currentUser.name, 'RESET_SENHA', `Senha de ${user.name} redefinida pelo administrador.`);
             showToast(`Senha de ${user.name} atualizada com sucesso.`, 'success');
         }
@@ -750,7 +768,7 @@ function saveEditUser(event) {
     authUsersDB[idx].filiais = filiais;
     authUsersDB[idx].permissions = permissions;
 
-    saveAuthUsers();
+    saveUserToCloud(authUsersDB[idx]);
     addAuthLog(currentUser.userId, currentUser.name, 'EDITAR_USER',
         `Permissões de ${authUsersDB[idx].name} editadas. Novo papel: ${getRoleDisplayName(newRole)}`);
 
