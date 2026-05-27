@@ -151,13 +151,13 @@ const DBStore = {
     }
 };
 
-// ==================== 4. LEITURA SEGURA DE DADOS DO BANCO LOCAL ====================
+// ==================== 4. LEITURA SEGURA DE DADOS DO BANCO LOCAL E NUVEM ====================
 
 let pops = INITIAL_POPS;
-(async () => {
+
+// Inscrever-se para atualizações em tempo real do Firestore
+db.collection("simas_pops").onSnapshot(async (snapshot) => {
     try {
-        // Tentar ler do Firestore
-        const snapshot = await db.collection("simas_pops").get();
         if (!snapshot.empty) {
             pops = snapshot.docs.map(doc => doc.data());
             
@@ -191,9 +191,11 @@ let pops = INITIAL_POPS;
             applyFilters();
         }
     } catch (e) {
-        console.error("Falha fatal ao ler dados de POPs:", e);
+        console.error("Erro no processamento em tempo real dos POPs:", e);
     }
-})();
+}, (error) => {
+    console.error("Falha ao escutar POPs na nuvem:", error);
+});
 
 let auditLogs = INITIAL_LOGS;
 try {
