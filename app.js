@@ -1534,6 +1534,30 @@ function simulateDocDownload(event) {
     showToast(`Baixando anexo '${f}' integrado com SharePoint corporativo...`, "success");
 }
 
+// ==================== TOAST NOTIFICATIONS ====================
+window.showToast = function(message, type = "info") {
+    const container = document.getElementById("toast-container-id");
+    if (!container) return;
+    
+    const toast = document.createElement("div");
+    toast.className = `toast ${type}`;
+    
+    let iconClass = "fa-circle-info";
+    if (type === "success") iconClass = "fa-check-circle";
+    else if (type === "error") iconClass = "fa-circle-exclamation";
+    else if (type === "warning") iconClass = "fa-triangle-exclamation";
+    
+    toast.innerHTML = `<i class="fa-solid ${iconClass}"></i> <span>${message}</span>`;
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        if (toast && toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 4000);
+};
+
 // ==================== 15. AUDIT TRAIL LOGGING ====================
 function logAction(action, popCodigo, descricao) {
     try {
