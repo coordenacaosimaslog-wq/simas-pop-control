@@ -154,7 +154,8 @@ const DBStore = {
 // ==================== 4. LEITURA SEGURA DE DADOS DO BANCO LOCAL ====================
 
 let pops = INITIAL_POPS;
-try {
+(async () => {
+    try {
         // Tentar ler do Firestore
         const snapshot = await db.collection("simas_pops").get();
         if (!snapshot.empty) {
@@ -189,12 +190,10 @@ try {
         if (typeof applyFilters === 'function') {
             applyFilters();
         }
-    }).catch(e => {
-        console.error("Erro ao carregar pops do banco de dados:", e);
-    });
-} catch (e) {
-    console.error("Falha fatal ao ler dados de POPs:", e);
-}
+    } catch (e) {
+        console.error("Falha fatal ao ler dados de POPs:", e);
+    }
+})();
 
 let auditLogs = INITIAL_LOGS;
 try {
