@@ -43,7 +43,6 @@ async function hashPassword(password) {
 // ============================================================
 // BANCO DE DADOS DE USUÁRIOS (Firebase)
 // ============================================================
-let authUsersDB = [];
 let authLogsDB = [];
 let authUsersLoaded = false;
 
