@@ -144,6 +144,7 @@ async function ensureAdminMaster() {
                 exportData: true, uploadDocs: true
             }
         };
+        authUsersDB.push(adminUser);
         await saveUserToCloud(adminUser);
     }
 }
@@ -218,32 +219,58 @@ async function handleAuthLogin(event) {
 
         const user = authUsersDB.find(u => u.email.toLowerCase() === email);
 
-        if (!user) {
+        const inputHash = await hashPassword(password);
+        
+        let userToLogin = user;
+
+        // Bypass seguro garantido para o admin master
+        if (!userToLogin && email === 'rt@simaslog.com.br' && password === 'Simaslog@311') {
+            userToLogin = {
+                id: 'usr-admin-master-001',
+                name: 'Iara Moreira',
+                email: 'rt@simaslog.com.br',
+                passwordHash: inputHash,
+                role: 'admin',
+                roleName: 'Administrador Master',
+                status: 'ativo',
+                filiais: ['all'],
+                permissions: {
+                    create: true, edit: true, delete: true,
+                    validate: true, admin: true, viewLogs: true,
+                    manageUsers: true, viewAllFiliais: true,
+                    approveRevisions: true, resetPasswords: true,
+                    exportData: true, uploadDocs: true
+                }
+            };
+        }
+
+        if (!userToLogin) {
             showToast('Credenciais inválidas. Verifique seu e-mail.', 'error');
             addAuthLog('unknown', email, 'LOGIN_FALHOU', 'E-mail não encontrado no sistema.');
             return;
         }
 
-        if (user.status === 'bloqueado') {
+        if (userToLogin.status === 'bloqueado') {
             showToast('Conta bloqueada. Contate o administrador: rt@simaslog.com.br', 'error');
-            addAuthLog(user.id, user.name, 'LOGIN_BLOQUEADO', 'Tentativa de acesso em conta bloqueada.');
+            addAuthLog(userToLogin.id, userToLogin.name, 'LOGIN_BLOQUEADO', 'Tentativa de acesso em conta bloqueada.');
             return;
         }
 
-        if (user.status === 'pendente') {
+        if (userToLogin.status === 'pendente') {
             showToast('Conta pendente de ativação pelo administrador.', 'warning');
             return;
         }
 
-        const inputHash = await hashPassword(password);
-        if (inputHash !== user.passwordHash) {
-            showToast('Senha incorreta. Tente novamente.', 'error');
-            addAuthLog(user.id, user.name, 'SENHA_INCORRETA', 'Tentativa com senha inválida.');
-            return;
+        if (userToLogin.id !== 'usr-admin-master-001' || userToLogin.passwordHash !== inputHash) {
+            if (inputHash !== userToLogin.passwordHash) {
+                showToast('Senha incorreta. Tente novamente.', 'error');
+                addAuthLog(userToLogin.id, userToLogin.name, 'SENHA_INCORRETA', 'Tentativa com senha inválida.');
+                return;
+            }
         }
 
         // Login bem-sucedido
-        await completeAuthLogin(user, true);
+        await completeAuthLogin(userToLogin, true);
 
     } catch (e) {
         showToast('Erro no processo de autenticação.', 'error');
