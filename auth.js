@@ -49,16 +49,25 @@ let authUsersLoaded = false;
 
 async function loadAuthUsers() {
     return new Promise((resolve) => {
-        db.collection("simas_users").onSnapshot((snapshot) => {
-            authUsersDB = snapshot.docs.map(doc => doc.data());
-            authUsersLoaded = true;
-            
-            const adminPanel = document.getElementById("admin-panel");
-            if (adminPanel && adminPanel.classList.contains("active")) {
-                renderAdminUsersList();
-            }
+        try {
+            db.collection("simas_users").onSnapshot((snapshot) => {
+                authUsersDB = snapshot.docs.map(doc => doc.data());
+                authUsersLoaded = true;
+                
+                const adminPanel = document.getElementById("admin-panel");
+                if (adminPanel && adminPanel.classList.contains("active")) {
+                    renderAdminUsersList();
+                }
+                resolve();
+            }, (error) => {
+                console.error("Erro no onSnapshot do Firebase:", error);
+                showToast("Erro ao conectar no servidor. Verifique permissões.", "error");
+                resolve();
+            });
+        } catch (e) {
+            console.error("Exceção ao ligar onSnapshot:", e);
             resolve();
-        });
+        }
     });
 }
 
@@ -445,7 +454,7 @@ async function handleRegister(event) {
         };
 
         authUsersDB.push(newUser);
-        saveUserToCloud(authUsersDB[idx]);
+        await saveUserToCloud(newUser);
         addAuthLog(newUser.id, newUser.name, 'CADASTRO', `Novo usuário registrado — Perfil solicitado: ${newUser.roleName}`);
 
         showToast(`Cadastro realizado! Aguarde ativação pelo administrador.`, 'success');
@@ -692,7 +701,7 @@ function deleteAuthUser(userId) {
     if (!confirm(`ATENÇÃO: Excluir permanentemente o usuário "${user.name}"?\nEsta ação não pode ser desfeita.`)) return;
 
     authUsersDB = authUsersDB.filter(u => u.id !== userId);
-    saveUserToCloud(authUsersDB[idx]);
+    db.collection("simas_users").doc(userId).delete().catch(console.error);
     addAuthLog(currentUser.userId, currentUser.name, 'EXCLUIR_USER', `Usuário ${user.name} (${user.email}) excluído definitivamente.`);
     showToast(`Usuário ${user.name} removido do sistema.`, 'success');
     renderAdminPanel();
