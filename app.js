@@ -155,47 +155,92 @@ const DBStore = {
 
 let pops = INITIAL_POPS;
 
-// Inscrever-se para atualizações em tempo real do Firestore
-db.collection("simas_pops").onSnapshot(async (snapshot) => {
+// FUNÇÃO DE CARREGAMENTO SEGURO
+async function loadSimasData() {
     try {
-        if (!snapshot.empty) {
-            pops = snapshot.docs.map(doc => doc.data());
-            
-            // Sort by ID descending (e.g. pop-003, pop-002, pop-001)
-            pops.sort((a, b) => {
-                const numA = parseInt(a.id.replace("pop-", ""), 10);
-                const numB = parseInt(b.id.replace("pop-", ""), 10);
-                return numB - numA; // Descending
+        if (typeof db !== 'undefined') {
+            // FIREBASE MODE
+            db.collection("simas_pops").onSnapshot(async (snapshot) => {
+                try {
+                    if (!snapshot.empty) {
+                        pops = snapshot.docs.map(doc => doc.data());
+                        pops.sort((a, b) => {
+                            const numA = parseInt(a.id.replace("pop-", ""), 10) || 0;
+                            const numB = parseInt(b.id.replace("pop-", ""), 10) || 0;
+                            return numB - numA;
+                        });
+                        if (typeof applyFilters === 'function') applyFilters();
+                    } else {
+                        // Firebase vazio, tenta migrar dados locais se existirem
+                        const rawPops = await DBStore.getItem("simas_pops");
+                        if (rawPops) {
+                            const localPops = typeof rawPops === 'string' ? JSON.parse(rawPops) : rawPops;
+                            if (localPops.length > 0) {
+                                showToast("Sincronizando dados locais com a nuvem. Aguarde...", "info");
+                                for (const p of localPops) {
+                                    await db.collection("simas_pops").doc(p.id).set(p);
+                                }
+                                pops = localPops;
+                                showToast("Migração para a nuvem concluída!", "success");
+                            } else {
+                                pops = [];
+                            }
+                        } else {
+                            pops = [];
+                        }
+                        if (typeof applyFilters === 'function') applyFilters();
+                    }
+                } catch (e) {
+                    console.error("Erro no processamento em tempo real dos POPs:", e);
+                }
+            }, (error) => {
+                console.error("Falha ao escutar POPs na nuvem:", error);
             });
-            
         } else {
-            // Se o Firestore estiver vazio, verifica se tem dados migrados no IndexedDB local para subir
+            // OFFLINE MODE (IndexedDB)
             const rawPops = await DBStore.getItem("simas_pops");
             if (rawPops) {
-                const localPops = typeof rawPops === 'string' ? JSON.parse(rawPops) : rawPops;
-                
-                showToast("Sincronizando dados locais com a nuvem. Aguarde...", "info");
-                
-                for (const p of localPops) {
-                    await db.collection("simas_pops").doc(p.id).set(p);
-                }
-                
-                pops = localPops;
-                showToast("Migração para a nuvem concluída!", "success");
+                pops = typeof rawPops === 'string' ? JSON.parse(rawPops) : rawPops;
             } else {
                 pops = [];
             }
+            if (typeof applyFilters === 'function') applyFilters();
         }
-
-        if (typeof applyFilters === 'function') {
-            applyFilters();
+        
+        // --- INICIALIZAÇÃO DE TREINAMENTOS ---
+        if (typeof db !== 'undefined') {
+            db.collection("simas_trainings").onSnapshot((snapshot) => {
+                try {
+                    if (!snapshot.empty) {
+                        trainings = snapshot.docs.map(doc => doc.data());
+                        trainings.sort((a, b) => new Date(b.dataAplicacao) - new Date(a.dataAplicacao));
+                    } else {
+                        trainings = [];
+                    }
+                    if (typeof applyTrainingFilters === 'function') applyTrainingFilters();
+                } catch (e) {
+                    console.error("Erro no processamento em tempo real dos Treinamentos:", e);
+                }
+            }, (error) => {
+                console.error("Falha ao escutar Treinamentos na nuvem:", error);
+            });
+        } else {
+            const rawTrainings = await DBStore.getItem("simas_trainings");
+            if (rawTrainings) {
+                trainings = typeof rawTrainings === 'string' ? JSON.parse(rawTrainings) : rawTrainings;
+            } else {
+                trainings = [];
+            }
+            if (typeof applyTrainingFilters === 'function') applyTrainingFilters();
         }
-    } catch (e) {
-        console.error("Erro no processamento em tempo real dos POPs:", e);
+        
+    } catch (globalErr) {
+        console.error("Erro crítico ao inicializar banco de dados principal:", globalErr);
     }
-}, (error) => {
-    console.error("Falha ao escutar POPs na nuvem:", error);
-});
+}
+
+// Chamar a função imediatamente
+loadSimasData();
 
 let auditLogs = INITIAL_LOGS;
 try {
@@ -209,12 +254,27 @@ try {
 let activeView = "dashboard";
 let currentPage = 1;
 const itemsPerPage = 5;
-let filteredPops = [...pops];
-
-// Instâncias do Chart.js
+let filteredPops = [];
+let trainings = [];
+let filteredTrainings = [];
 let chartFilialInstance = null;
+let chartAreaInstance = null;
 let chartStatusInstance = null;
 let activeUploadedFile = null;
+
+// ==================== UTILITÁRIOS DE DATA ====================
+window.formatDate = function(dateStr) {
+    if (!dateStr) return "-";
+    try {
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        return dateStr;
+    } catch (e) {
+        return dateStr;
+    }
+};
 
 // ==================== 5. INICIALIZAÇÃO DA APLICAÇÃO (DOMContentLoaded) ====================
 document.addEventListener("DOMContentLoaded", async () => {
@@ -500,6 +560,10 @@ function switchView(viewId) {
             if (title) title.innerText = "Controle de POPs";
             if (desc) desc.innerText = "Controle e rastreabilidade de Procedimentos Operacionais Padrão por filiais";
             applyFilters();
+        } else if (viewId === "trainings") {
+            if (title) title.innerText = "Cronograma de Treinamento";
+            if (desc) desc.innerText = "Agendamento, acompanhamento e registro de treinamentos da qualidade";
+            if (typeof applyTrainingFilters === 'function') applyTrainingFilters();
         } else if (viewId === "audit") {
             if (title) title.innerText = "Histórico de Logs (Trilha de Auditoria)";
             if (desc) desc.innerText = "Log regulatório de conformidade da Simas Logística (Anvisa / ISO)";
@@ -906,15 +970,17 @@ function applyFilters() {
     try {
         if (activeView !== 'pops') return;
         
-        const filialVal = document.getElementById("filter-filial").value;
-        const tipoVal = document.getElementById("filter-tipo").value;
-        const areaVal = document.getElementById("filter-area").value;
-        const statusVal = document.getElementById("filter-status").value;
-        const abrangenciaVal = document.getElementById("filter-abrangencia") ? document.getElementById("filter-abrangencia").value : "";
-        const responsavelVal = document.getElementById("filter-responsavel").value.toLowerCase().trim();
-        const anoRevVal = document.getElementById("filter-ano-revisao") ? document.getElementById("filter-ano-revisao").value : "";
-        const anoProxVal = document.getElementById("filter-ano-proxima") ? document.getElementById("filter-ano-proxima").value : "";
-        const searchVal = document.getElementById("pop-search-input") ? document.getElementById("pop-search-input").value.toLowerCase().trim() : "";
+        const getVal = (id) => { const el = document.getElementById(id); return el ? el.value : ""; };
+        
+        const filialVal = getVal("filter-filial");
+        const tipoVal = getVal("filter-tipo");
+        const areaVal = getVal("filter-area");
+        const statusVal = getVal("filter-status");
+        const abrangenciaVal = getVal("filter-abrangencia");
+        const responsavelVal = getVal("filter-responsavel").toLowerCase().trim();
+        const anoRevVal = getVal("filter-ano-revisao");
+        const anoProxVal = getVal("filter-ano-proxima");
+        const searchVal = getVal("pop-search-input").toLowerCase().trim();
         
         filteredPops = pops.filter(pop => {
             if (filialVal && pop.filial !== filialVal) return false;
@@ -924,21 +990,30 @@ function applyFilters() {
             if (abrangenciaVal && (pop.abrangencia || "Global") !== abrangenciaVal) return false;
             
             if (anoRevVal && pop.dataRevisao) {
-                if (!pop.dataRevisao.startsWith(anoRevVal)) return false;
+                if (!String(pop.dataRevisao).startsWith(anoRevVal)) return false;
             }
             if (anoProxVal && pop.proximaRevisao) {
-                if (!pop.proximaRevisao.startsWith(anoProxVal)) return false;
+                if (!String(pop.proximaRevisao).startsWith(anoProxVal)) return false;
             }
             
-            if (responsavelVal && !pop.responsavel.toLowerCase().includes(responsavelVal)) return false;
+            if (responsavelVal) {
+                const resp = String(pop.responsavel || "");
+                if (!resp.toLowerCase().includes(responsavelVal)) return false;
+            }
             
             if (searchVal) {
+                const codigo = String(pop.codigo || "");
+                const titulo = String(pop.titulo || "");
+                const tipo = String(pop.tipo || "");
+                const responsavel = String(pop.responsavel || "");
+                const area = String(pop.area || "");
+                
                 const matches = 
-                    pop.codigo.toLowerCase().includes(searchVal) ||
-                    pop.titulo.toLowerCase().includes(searchVal) ||
-                    (pop.tipo || "").toLowerCase().includes(searchVal) ||
-                    pop.responsavel.toLowerCase().includes(searchVal) ||
-                    pop.area.toLowerCase().includes(searchVal);
+                    codigo.toLowerCase().includes(searchVal) ||
+                    titulo.toLowerCase().includes(searchVal) ||
+                    tipo.toLowerCase().includes(searchVal) ||
+                    responsavel.toLowerCase().includes(searchVal) ||
+                    area.toLowerCase().includes(searchVal);
                 if (!matches) return false;
             }
             return true;
@@ -1036,7 +1111,7 @@ function renderPopsTable() {
             }
             
             // Definir classe do Tipo
-            const tipoLower = (pop.tipo || "POP").toLowerCase();
+            const tipoLower = String(pop.tipo || "POP").toLowerCase();
             let tipoIcon = "fa-file-lines";
             if (tipoLower === "anexo") tipoIcon = "fa-paperclip";
             else if (tipoLower === "manual") tipoIcon = "fa-book";
@@ -1809,3 +1884,385 @@ async function downloadPOP(id) {
 }
 
 
+
+// ============================================================
+// MÓDULO DE TREINAMENTOS (CRONOGRAMA)
+// ============================================================
+
+function applyTrainingFilters() {
+    try {
+        if (activeView !== 'trainings') return;
+        
+        const getVal = (id) => { const el = document.getElementById(id); return el ? el.value : ""; };
+        
+        const mesVal = getVal("filter-training-mes");
+        const tipoVal = getVal("filter-training-tipo");
+        const searchVal = getVal("training-search-input").toLowerCase().trim();
+        
+        filteredTrainings = trainings.filter(t => {
+            if (mesVal && t.mes !== mesVal) return false;
+            if (tipoVal && t.tipo !== tipoVal) return false;
+            
+            if (searchVal) {
+                const tema = String(t.tema || "").toLowerCase();
+                const trilha = String(t.trilha || "").toLowerCase();
+                if (!tema.includes(searchVal) && !trilha.includes(searchVal)) return false;
+            }
+            return true;
+        });
+        
+        renderTrainingsTable();
+    } catch (e) {
+        console.error("Erro ao aplicar filtros de treinamento:", e);
+    }
+}
+
+function clearTrainingFilters() {
+    document.getElementById("filter-training-mes").value = "";
+    document.getElementById("filter-training-tipo").value = "";
+    document.getElementById("training-search-input").value = "";
+    applyTrainingFilters();
+}
+
+function renderTrainingsTable() {
+    const tbody = document.getElementById("trainings-table-body");
+    if (!tbody) return;
+    
+    tbody.innerHTML = "";
+    
+    if (filteredTrainings.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                    <i class="fa-solid fa-chalkboard-user" style="font-size: 2rem; display: block; margin-bottom: 8px; color: var(--text-light);"></i>
+                    Nenhum Treinamento localizado com os filtros atuais.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    filteredTrainings.forEach(t => {
+        const tr = document.createElement("tr");
+        
+        let editBtn = `<button class="btn-icon" onclick="openTrainingModal('${t.id}')" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>`;
+        let deleteBtn = `<button class="btn-icon delete" onclick="deleteTraining('${t.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>`;
+        
+        if (currentUser && currentUser.role === 'visualizacao') {
+            editBtn = "";
+            deleteBtn = "";
+        }
+        
+        const badgeTipoClass = (t.tipo === "Formação") ? "tipo-badge manual" : 
+                              (t.tipo === "Reciclagem") ? "tipo-badge pop" : "tipo-badge anexo";
+                              
+        const badgeModalidade = t.modalidade === "Online" ? 
+            `<span style="color: #0284c7; font-weight:600;"><i class="fa-solid fa-laptop"></i> Online</span>` :
+            `<span style="color: #166534; font-weight:600;"><i class="fa-solid fa-users"></i> Presencial</span>`;
+            
+        tr.innerHTML = `
+            <td style="font-weight: 600;">${t.mes || "-"}</td>
+            <td><strong style="color: var(--navy-deep);">${t.tema || "-"}</strong></td>
+            <td>${t.trilha || "-"}</td>
+            <td><span class="${badgeTipoClass}">${t.tipo || "-"}</span></td>
+            <td>${badgeModalidade}</td>
+            <td style="text-align:center;">${formatDate(t.dataAplicacao)}</td>
+            <td style="text-align:center;">${formatDate(t.dataPrevista)}</td>
+            <td style="text-align:center;">${formatDate(t.dataRealizacao)}</td>
+            <td style="text-align: center;">
+                <div class="action-buttons" style="display: flex; gap: 6px; justify-content: center;">
+                    ${editBtn}
+                    ${deleteBtn}
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function openTrainingModal(id = null) {
+    const modal = document.getElementById("training-modal");
+    if (!modal) return;
+    
+    if (id) {
+        const t = trainings.find(x => x.id === id);
+        if (t) {
+            document.getElementById("training-modal-title").innerHTML = `<i class="fa-solid fa-pen"></i> Editar Treinamento`;
+            document.getElementById("training-id").value = t.id;
+            document.getElementById("training-tema").value = t.tema || "";
+            document.getElementById("training-mes").value = t.mes || "";
+            document.getElementById("training-trilha").value = t.trilha || "";
+            document.getElementById("training-tipo").value = t.tipo || "";
+            document.getElementById("training-modalidade").value = t.modalidade || "Presencial";
+            document.getElementById("training-data-aplicacao").value = t.dataAplicacao || "";
+            document.getElementById("training-data-prevista").value = t.dataPrevista || "";
+            document.getElementById("training-data-realizacao").value = t.dataRealizacao || "";
+        }
+    } else {
+        document.getElementById("training-modal-title").innerHTML = `<i class="fa-solid fa-chalkboard-user"></i> Agendar Novo Treinamento`;
+        document.getElementById("training-id").value = "";
+        document.getElementById("training-tema").value = "";
+        document.getElementById("training-mes").value = "";
+        document.getElementById("training-trilha").value = "";
+        document.getElementById("training-tipo").value = "";
+        document.getElementById("training-modalidade").value = "Presencial";
+        document.getElementById("training-data-aplicacao").value = "";
+        document.getElementById("training-data-prevista").value = "";
+        document.getElementById("training-data-realizacao").value = "";
+    }
+    
+    modal.classList.add("active");
+}
+
+function closeTrainingModal() {
+    const modal = document.getElementById("training-modal");
+    if (modal) modal.classList.remove("active");
+}
+
+async function saveTraining() {
+    try {
+        if (currentUser && currentUser.role === 'visualizacao') {
+            showToast("Você não tem permissão para cadastrar treinamentos.", "error");
+            return;
+        }
+        
+        const btn = document.getElementById("btn-save-training");
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Salvando...`;
+        
+        const id = document.getElementById("training-id").value;
+        const tema = document.getElementById("training-tema").value.trim();
+        const mes = document.getElementById("training-mes").value;
+        const trilha = document.getElementById("training-trilha").value.trim();
+        const tipo = document.getElementById("training-tipo").value;
+        const modalidade = document.getElementById("training-modalidade").value;
+        const dataAplicacao = document.getElementById("training-data-aplicacao").value;
+        const dataPrevista = document.getElementById("training-data-prevista").value;
+        const dataRealizacao = document.getElementById("training-data-realizacao").value;
+        
+        if (!tema || !mes || !tipo || !modalidade || !dataPrevista) {
+            showToast("Preencha todos os campos obrigatórios (marcados com *).", "warning");
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Salvar Treinamento`;
+            return;
+        }
+        
+        const trainingObj = {
+            tema,
+            mes,
+            trilha,
+            tipo,
+            modalidade,
+            dataAplicacao,
+            dataPrevista,
+            dataRealizacao,
+            updatedAt: new Date().toISOString()
+        };
+        
+        if (id) {
+            trainingObj.id = id;
+            const idx = trainings.findIndex(t => t.id === id);
+            if (idx !== -1) trainings[idx] = trainingObj;
+            else trainings.push(trainingObj);
+        } else {
+            trainingObj.id = 'train-' + Date.now();
+            trainingObj.createdAt = new Date().toISOString();
+            trainings.push(trainingObj);
+        }
+        
+        // Salvar offline
+        DBStore.setItem("simas_trainings", trainings);
+        
+        if (typeof db !== 'undefined') {
+            await db.collection("simas_trainings").doc(trainingObj.id).set(trainingObj);
+            showToast("Treinamento salvo com sucesso!", "success");
+            logAction("Treinamento", trainingObj.tema, `Agendou/Editou o treinamento: ${trainingObj.tema}`);
+        } else {
+            showToast("Treinamento salvo com sucesso! (Modo Offline Local)", "success");
+            logAction("Treinamento", trainingObj.tema, `Agendou/Editou treinamento (Offline): ${trainingObj.tema}`);
+            if (typeof applyTrainingFilters === 'function') applyTrainingFilters();
+        }
+        
+        closeTrainingModal();
+    } catch (e) {
+        console.error("Erro ao salvar treinamento:", e);
+        showToast("Erro ao salvar. Verifique sua conexão.", "error");
+    } finally {
+        const btn = document.getElementById("btn-save-training");
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Salvar Treinamento`;
+        }
+    }
+}
+
+async function deleteTraining(id) {
+    if (!confirm("Tem certeza que deseja excluir permanentemente este treinamento?")) return;
+    
+    try {
+        trainings = trainings.filter(t => t.id !== id);
+        DBStore.setItem("simas_trainings", trainings);
+        
+        if (typeof db !== 'undefined') {
+            await db.collection("simas_trainings").doc(id).delete();
+            showToast("Treinamento excluído com sucesso.", "success");
+        } else {
+            showToast("Treinamento excluído (Modo Offline Local).", "success");
+            if (typeof applyTrainingFilters === 'function') applyTrainingFilters();
+        }
+    } catch (e) {
+        console.error("Erro ao excluir treinamento:", e);
+        showToast("Erro ao excluir treinamento.", "error");
+    }
+}
+
+
+// ==================== DASHBOARD DE TREINAMENTOS ====================
+function updateTrainingDashboard() {
+    if (!document.getElementById('dash-total-trainings')) return;
+    
+    let total = trainings.length;
+    let aplicados = 0;
+    let atrasados = 0;
+    
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    
+    trainings.forEach(t => {
+        // Regra 1: Aplicado = Data de Realização preenchida
+        if (t.dataRealizacao && t.dataRealizacao.trim() !== '') {
+            aplicados++;
+        } else {
+            // Regra 3: Atrasado = Data Prevista < Hoje E não realizado
+            if (t.dataPrevista) {
+                const prevDate = new Date(t.dataPrevista + 'T00:00:00');
+                if (prevDate < hoje) {
+                    atrasados++;
+                }
+            }
+        }
+    });
+    
+    document.getElementById('dash-total-trainings').innerText = total;
+    document.getElementById('dash-applied-trainings').innerText = aplicados;
+    document.getElementById('dash-delayed-trainings').innerText = atrasados;
+}
+
+// Chamar a atualização do dashboard sempre que os dados mudarem
+const originalApplyTrainingFilters = applyTrainingFilters;
+applyTrainingFilters = function() {
+    originalApplyTrainingFilters();
+    updateTrainingDashboard();
+};
+
+// ==================== IMPORTAÇÃO DE EXCEL (SheetJS) ====================
+function downloadTrainingTemplate() {
+    // Cria uma planilha vazia com cabeçalhos corretos
+    const headers = [
+        'Mês (Ex: Janeiro)',
+        'Tema do Treinamento',
+        'Trilha',
+        'Tipo (Formação, Reciclagem, Ação Pontual)',
+        'Modalidade (Presencial, Online, Híbrido)',
+        'Data Aplicação (DD-MM-YYYY)',
+        'Data Prevista (DD-MM-YYYY)',
+        'Data Realização (DD-MM-YYYY)'
+    ];
+    
+    const ws = XLSX.utils.aoa_to_sheet([headers]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Modelo Treinamentos');
+    
+    XLSX.writeFile(wb, 'Modelo_Importacao_Treinamentos.xlsx');
+}
+
+async function importTrainingsExcel(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (currentUser && currentUser.role === 'visualizacao') {
+        showToast('Sem permissão para importar.', 'error');
+        return;
+    }
+    
+    showToast('Lendo planilha, aguarde...', 'info');
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            
+            const firstSheet = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheet];
+            
+            // Converte para JSON (pula a linha de cabeçalho via header: 1)
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+            
+            if (jsonData.length <= 1) {
+                showToast('A planilha parece estar vazia.', 'warning');
+                return;
+            }
+            
+            let countImported = 0;
+            
+            // Helper local para conversão de datas (DD-MM-YYYY ou serial do Excel -> YYYY-MM-DD)
+            const parseExcelDate = (val) => {
+                if (!val) return '';
+                if (typeof val === 'number') {
+                    const jsDate = new Date(Date.UTC(1899, 11, 30));
+                    jsDate.setTime(jsDate.getTime() + val * 86400000);
+                    return `${jsDate.getUTCFullYear()}-${String(jsDate.getUTCMonth() + 1).padStart(2, '0')}-${String(jsDate.getUTCDate()).padStart(2, '0')}`;
+                }
+                const str = String(val).trim();
+                if (str.match(/^\d{2}[\/\-]\d{2}[\/\-]\d{4}$/)) {
+                    const p = str.split(/[\/\-]/);
+                    return `${p[2]}-${p[1]}-${p[0]}`;
+                }
+                if (str.match(/^\d{4}[\/\-]\d{2}[\/\-]\d{2}$/)) {
+                    const p = str.split(/[\/\-]/);
+                    return `${p[0]}-${p[1]}-${p[2]}`;
+                }
+                return str;
+            };
+            
+            for (let i = 1; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                if (!row || row.length === 0 || !row[1]) continue; // Pula linha vazia
+                
+                const trainingObj = {
+                    id: 'train-' + Date.now() + '-' + i,
+                    mes: row[0] || '',
+                    tema: row[1] || 'Tema não informado',
+                    trilha: row[2] || '',
+                    tipo: row[3] || 'Formação',
+                    modalidade: row[4] || 'Presencial',
+                    dataAplicacao: parseExcelDate(row[5]),
+                    dataPrevista: parseExcelDate(row[6]),
+                    dataRealizacao: parseExcelDate(row[7]),
+                    createdAt: new Date().toISOString()
+                };
+                
+                trainings.push(trainingObj);
+                
+                if (typeof db !== 'undefined') {
+                    await db.collection('simas_trainings').doc(trainingObj.id).set(trainingObj);
+                }
+                countImported++;
+            }
+            
+            DBStore.setItem('simas_trainings', trainings);
+            applyTrainingFilters();
+            
+            showToast(countImported + ' treinamentos importados com sucesso!', 'success');
+            logAction('Treinamento', 'Importação', `Importou ${countImported} treinamentos via planilha.`);
+            
+        } catch (err) {
+            console.error('Erro na importação:', err);
+            showToast('Erro ao processar a planilha. Verifique o formato.', 'error');
+        } finally {
+            event.target.value = ''; // Limpa o input
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}

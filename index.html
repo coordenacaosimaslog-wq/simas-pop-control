@@ -22,8 +22,6 @@
         <div class="login-left" style="background-image: url('./login_bg.png');">
             <div class="login-brand-logo" id="login-brand-logo-id">
                 <img src="./simas_logo.png" class="brand-bird" alt="SIMAS Logo">
-                <div class="brand-sep"></div>
-                SIMAS <span>LOGÃSTICA</span>
             </div>
             <div class="login-left-content">
                 <h1>Controle Corporativo<span class="headline-accent">de Revisão de POPs</span></h1>
@@ -77,6 +75,7 @@
                         <div class="input-with-icon">
                             <input type="password" id="login-password" placeholder="••••••••" required>
                             <i class="fa-solid fa-lock"></i>
+                            <i class="fa-solid fa-eye toggle-password-btn" onclick="togglePasswordVisibility('login-password', this)" title="Mostrar senha"></i>
                         </div>
                     </div>
 
@@ -154,6 +153,7 @@
                         <div class="input-with-icon">
                             <input type="password" id="reg-password" placeholder="Mín. 8 caracteres" required minlength="8">
                             <i class="fa-solid fa-lock"></i>
+                            <i class="fa-solid fa-eye toggle-password-btn" onclick="togglePasswordVisibility('reg-password', this)" title="Mostrar senha"></i>
                         </div>
                         <small style="font-size:0.72rem;color:var(--text-secondary);margin-top:4px;display:block;">Use letras maiúsculas, minúsculas, números e símbolos.</small>
                     </div>
@@ -162,6 +162,7 @@
                         <div class="input-with-icon">
                             <input type="password" id="reg-confirm" placeholder="Repita a senha" required>
                             <i class="fa-solid fa-lock"></i>
+                            <i class="fa-solid fa-eye toggle-password-btn" onclick="togglePasswordVisibility('reg-confirm', this)" title="Mostrar senha"></i>
                         </div>
                     </div>
                     <button type="submit" class="btn-login" id="btn-register-submit">
@@ -246,6 +247,12 @@
                         <div class="sidebar-link">
                             <i class="fa-solid fa-file-signature"></i>
                             <span>Controle de POPs</span>
+                        </div>
+                    </li>
+                    <li class="sidebar-item" id="menu-trainings" onclick="switchView('trainings')">
+                        <div class="sidebar-link">
+                            <i class="fa-solid fa-chalkboard-user"></i>
+                            <span>Treinamentos</span>
                         </div>
                     </li>
                     <li class="sidebar-item" id="menu-audit" onclick="switchView('audit')">
@@ -623,6 +630,100 @@
 
                 </section>
 
+
+                <!-- ABA: CRONOGRAMA DE TREINAMENTO -->
+                <section id="view-trainings" class="spa-view">
+                    
+                    <!-- Dashboard de Treinamentos -->
+                    <div class="dashboard-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                        <div class="stat-card" style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); border-left: 4px solid var(--brand);">
+                            <div style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 600; text-transform: uppercase;">Total de Treinamentos</div>
+                            <div id="dash-total-trainings" style="font-size: 2rem; font-weight: 700; color: var(--text-primary); margin-top: 0.5rem;">0</div>
+                        </div>
+                        <div class="stat-card" style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); border-left: 4px solid #10b981;">
+                            <div style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 600; text-transform: uppercase;">Treinamentos Aplicados</div>
+                            <div id="dash-applied-trainings" style="font-size: 2rem; font-weight: 700; color: #10b981; margin-top: 0.5rem;">0</div>
+                        </div>
+                        <div class="stat-card" style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); border-left: 4px solid #ef4444;">
+                            <div style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 600; text-transform: uppercase;">Treinamentos Atrasados</div>
+                            <div id="dash-delayed-trainings" style="font-size: 2rem; font-weight: 700; color: #ef4444; margin-top: 0.5rem;">0</div>
+                        </div>
+                    </div>
+
+                    <div class="filter-search-panel" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="training-search-input" placeholder="Buscar tema ou trilha..." oninput="applyTrainingFilters()">
+                        </div>
+                        
+                        <div class="filters-row" style="flex: 1; display: flex; gap: 10px; align-items: center;">
+                            <div class="filter-group">
+                                <label for="filter-training-mes" style="display:none;">Mês</label>
+                                <select id="filter-training-mes" onchange="applyTrainingFilters()">
+                                    <option value="">Todos os Meses</option>
+                                    <option value="Janeiro">Janeiro</option>
+                                    <option value="Fevereiro">Fevereiro</option>
+                                    <option value="Março">Março</option>
+                                    <option value="Abril">Abril</option>
+                                    <option value="Maio">Maio</option>
+                                    <option value="Junho">Junho</option>
+                                    <option value="Julho">Julho</option>
+                                    <option value="Agosto">Agosto</option>
+                                    <option value="Setembro">Setembro</option>
+                                    <option value="Outubro">Outubro</option>
+                                    <option value="Novembro">Novembro</option>
+                                    <option value="Dezembro">Dezembro</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="filter-training-tipo" style="display:none;">Tipo</label>
+                                <select id="filter-training-tipo" onchange="applyTrainingFilters()">
+                                    <option value="">Todos os Tipos</option>
+                                    <option value="Formação">Formação</option>
+                                    <option value="Reciclagem">Reciclagem</option>
+                                    <option value="Ações pontuais">Ações pontuais</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="action-group" style="display: flex; gap: 10px;">
+                            <button class="btn-outline" onclick="clearTrainingFilters()">
+                                <i class="fa-solid fa-eraser" style="color: #ef4444;"></i> Limpar
+                            </button>
+                            <button class="btn-outline" onclick="downloadTrainingTemplate()" title="Baixar Planilha Modelo">
+                                <i class="fa-solid fa-file-excel" style="color: #10b981;"></i> Modelo
+                            </button>
+                            <input type="file" id="import-training-file" accept=".xlsx, .xls, .csv" style="display: none;" onchange="importTrainingsExcel(event)">
+                            <button class="btn-outline" onclick="document.getElementById('import-training-file').click()" title="Importar em Massa">
+                                <i class="fa-solid fa-upload" style="color: var(--brand);"></i> Importar
+                            </button>
+                            <button class="btn-primary" id="btn-open-create-training" onclick="openTrainingModal()">
+                                <i class="fa-solid fa-plus"></i> Novo Treinamento
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="custom-table trainings-table">
+                            <thead>
+                                <tr>
+                                    <th>Mês</th>
+                                    <th>Tema do Treinamento</th>
+                                    <th>Trilha</th>
+                                    <th>Tipo</th>
+                                    <th>Modalidade</th>
+                                    <th style="text-align:center;">Data Aplicação</th>
+                                    <th style="text-align:center;">Data Prevista</th>
+                                    <th style="text-align:center;">Data Realização</th>
+                                    <th style="text-align:center;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trainings-table-body">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
 
                 <!-- ABA 3: HISTÓRICO DE LOGS (AUDIT TRAIL) -->
                 <section id="view-audit" class="spa-view">
@@ -1217,7 +1318,88 @@
     </div>
 
 
-    <!-- ==================== CENTRO DE NOTIFICAÇÕES (POP-UP) ==================== -->
+    <!-- ==================== MODAL CRIAR/EDITAR TREINAMENTO ==================== -->
+    <div id="training-modal" class="modal-overlay">
+        <div class="modal-container" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 id="training-modal-title"><i class="fa-solid fa-chalkboard-user"></i> Agendar Novo Treinamento</h3>
+                <button class="modal-close" onclick="closeTrainingModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="training-id">
+                
+                <div class="form-grid">
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="training-tema">Tema do Treinamento <span style="color:var(--danger)">*</span></label>
+                        <input type="text" id="training-tema" placeholder="Ex: Procedimento de Carga e Descarga">
+                    </div>
+                    
+                    <div class="form-group" style="grid-column: span 1;">
+                        <label for="training-mes">Mês <span style="color:var(--danger)">*</span></label>
+                        <select id="training-mes">
+                            <option value="">Selecione...</option>
+                            <option value="Janeiro">Janeiro</option>
+                            <option value="Fevereiro">Fevereiro</option>
+                            <option value="Março">Março</option>
+                            <option value="Abril">Abril</option>
+                            <option value="Maio">Maio</option>
+                            <option value="Junho">Junho</option>
+                            <option value="Julho">Julho</option>
+                            <option value="Agosto">Agosto</option>
+                            <option value="Setembro">Setembro</option>
+                            <option value="Outubro">Outubro</option>
+                            <option value="Novembro">Novembro</option>
+                            <option value="Dezembro">Dezembro</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 1;">
+                        <label for="training-trilha">Trilha</label>
+                        <input type="text" id="training-trilha" placeholder="Ex: Qualidade">
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 1;">
+                        <label for="training-tipo">Tipo <span style="color:var(--danger)">*</span></label>
+                        <select id="training-tipo">
+                            <option value="">Selecione...</option>
+                            <option value="Formação">Formação</option>
+                            <option value="Reciclagem">Reciclagem</option>
+                            <option value="Ações pontuais">Ações pontuais</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 1;">
+                        <label for="training-modalidade">Modalidade <span style="color:var(--danger)">*</span></label>
+                        <select id="training-modalidade">
+                            <option value="Presencial">Presencial</option>
+                            <option value="Online">Online</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 1;">
+                        <label for="training-data-aplicacao">Data Aplicação</label>
+                        <input type="date" id="training-data-aplicacao">
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 1;">
+                        <label for="training-data-prevista">Data Prevista <span style="color:var(--danger)">*</span></label>
+                        <input type="date" id="training-data-prevista">
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="training-data-realizacao">Data de Realização (Conclusão)</label>
+                        <input type="date" id="training-data-realizacao">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="closeTrainingModal()">Cancelar</button>
+                <button class="btn btn-primary" id="btn-save-training" onclick="saveTraining()">
+                    <i class="fa-solid fa-floppy-disk"></i> Salvar Treinamento
+                </button>
+            </div>
+        </div>
+    </div>
     <div id="notifications-panel" style="display: none; position: fixed; top: 75px; right: 20px; width: 320px; background-color: white; border: 1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); z-index: 9999; animation: slideDown 0.25s ease;">
         <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); background-color: var(--graphite-900); color: white; border-top-left-radius: var(--radius-lg); border-top-right-radius: var(--radius-lg); display: flex; justify-content: space-between; align-items: center;">
             <h4 style="font-size: 0.85rem; font-weight: 700; font-family:'Montserrat',sans-serif;"><i class="fa-solid fa-bell"></i> Notificações do Sistema</h4>
@@ -1318,6 +1500,23 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
+    <!-- SheetJS (Excel Parsing) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <!-- JAVASCRIPT LOCAL -->
+    <script>
+        function togglePasswordVisibility(inputId, icon) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+    </script>
     
     <script src="app.js"></script>
     <!-- JS Autenticacao e Gestao de Usuarios -->

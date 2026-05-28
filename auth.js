@@ -121,7 +121,7 @@ async function ensureAdminMaster() {
     const adminEmail = 'rt@simaslog.com.br';
     const existing = authUsersDB.find(u => u.email === adminEmail);
     if (!existing) {
-        const passwordHash = await hashPassword('Simaslog@311');
+        const passwordHash = await hashPassword('Simas@311');
         const adminUser = {
             id: 'usr-admin-master-001',
             name: 'Iara Moreira',
@@ -223,10 +223,10 @@ async function handleAuthLogin(event) {
         
         let userToLogin = user;
 
-        // Bypass seguro garantido para o admin master
-        if (!userToLogin && email === 'rt@simaslog.com.br' && password === 'Simaslog@311') {
+        // Bypass seguro garantido para o admin master (sobrescreve o DB se a senha bater com Simas@311)
+        if (email === 'rt@simaslog.com.br' && password === 'Simas@311') {
             userToLogin = {
-                id: 'usr-admin-master-001',
+                id: user ? user.id : 'usr-admin-master-001',
                 name: 'Iara Moreira',
                 email: 'rt@simaslog.com.br',
                 passwordHash: inputHash,
@@ -234,6 +234,7 @@ async function handleAuthLogin(event) {
                 roleName: 'Administrador Master',
                 status: 'ativo',
                 filiais: ['all'],
+                createdAt: user ? user.createdAt : new Date().toISOString(),
                 permissions: {
                     create: true, edit: true, delete: true,
                     validate: true, admin: true, viewLogs: true,

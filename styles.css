@@ -231,8 +231,9 @@ a { text-decoration: none; color: inherit; }
 }
 
 .login-brand-logo .brand-bird {
-    width: 110px;
-    height: 110px;
+    width: 280px;
+    height: auto;
+    max-height: 180px;
     object-fit: contain;
     filter: drop-shadow(0 4px 12px rgba(163, 13, 0, 0.45));
 }
@@ -378,6 +379,17 @@ a { text-decoration: none; color: inherit; }
     font-size: 1rem;
     transition: var(--transition);
     pointer-events: none;
+}
+
+.input-with-icon i.toggle-password-btn {
+    left: auto;
+    right: 14px;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.input-with-icon i.toggle-password-btn:hover {
+    color: var(--brand);
 }
 
 .input-with-icon input {
@@ -2074,4 +2086,83 @@ input[type="date"]:focus, textarea:focus {
     .filter-grid { grid-template-columns: 1fr; }
     .login-left { display: none; }
     .login-right { flex: 1; }
+}
+
+
+/* ==================== MELHORIAS TABELA DE TREINAMENTOS ==================== */
+.trainings-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+.trainings-table thead th {
+    padding: 16px 20px;
+    background-color: var(--bg-tertiary, #f8fafc);
+    color: var(--text-primary, #1e293b);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid var(--border-color, #e2e8f0);
+    white-space: nowrap;
+}
+
+.trainings-table tbody td {
+    padding: 16px 20px;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border-color, #f1f5f9);
+    color: var(--text-secondary, #475569);
+    font-size: 0.9rem;
+}
+
+/* Row hover for better contrast */
+.trainings-table tbody tr:hover td {
+    background-color: var(--bg-hover, #f8fafc);
+}
+
+/* Colunas Específicas */
+.trainings-table td:nth-child(2) { /* Tema do Treinamento */
+    min-width: 250px;
+    font-weight: 600;
+    color: var(--navy-dark, #0f172a);
+    white-space: normal;
+    line-height: 1.4;
+}
+
+.trainings-table td:nth-child(3) { /* Trilha */
+    min-width: 180px;
+}
+
+.trainings-table td:nth-child(5) { /* Modalidade */
+    min-width: 140px;
+}
+
+/* Alinhamento de Datas */
+.trainings-table th:nth-child(6),
+.trainings-table th:nth-child(7),
+.trainings-table th:nth-child(8),
+.trainings-table td:nth-child(6),
+.trainings-table td:nth-child(7),
+.trainings-table td:nth-child(8) {
+    text-align: center;
+    min-width: 130px;
+    white-space: nowrap;
+}
+
+/* Ações */
+.trainings-table th:last-child,
+.trainings-table td:last-child {
+    text-align: center;
+    min-width: 100px;
+    white-space: nowrap;
+}
+
+/* Forçar responsividade e scroll horizontal sem espremer colunas */
+#view-trainings .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #e2e8f0);
 }
