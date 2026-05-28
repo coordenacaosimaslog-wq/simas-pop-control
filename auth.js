@@ -72,9 +72,13 @@ async function loadAuthUsers() {
 
 async function saveUserToCloud(userObj) {
     try {
-        await db.collection("simas_users").doc(userObj.id).set(userObj);
+        if (typeof db !== 'undefined') {
+            await db.collection("simas_users").doc(userObj.id).set(userObj);
+        }
     } catch(e) {
         console.error("Erro ao salvar usuário:", e);
+    } finally {
+        SafeStorage.setItem('simas_offline_users', JSON.stringify(authUsersDB));
     }
 }
 
@@ -101,9 +105,15 @@ async function addAuthLog(userId, userName, action, detail, ip = 'local') {
         userAgent: navigator.userAgent.substring(0, 80)
     };
     try {
-        await db.collection("simas_auth_logs").doc(logEntry.id).set(logEntry);
+        if (typeof db !== 'undefined') {
+            await db.collection("simas_auth_logs").doc(logEntry.id).set(logEntry);
+        }
     } catch(e) {
         console.error("Erro log:", e);
+    } finally {
+        authLogsDB.unshift(logEntry);
+        authLogsDB = authLogsDB.slice(0, 500);
+        SafeStorage.setItem('simas_offline_logs', JSON.stringify(authLogsDB));
     }
 }
 
@@ -728,7 +738,10 @@ function deleteAuthUser(userId) {
     if (!confirm(`ATENÇÃO: Excluir permanentemente o usuário "${user.name}"?\nEsta ação não pode ser desfeita.`)) return;
 
     authUsersDB = authUsersDB.filter(u => u.id !== userId);
-    db.collection("simas_users").doc(userId).delete().catch(console.error);
+    if (typeof db !== 'undefined') {
+        db.collection("simas_users").doc(userId).delete().catch(console.error);
+    }
+    SafeStorage.setItem('simas_offline_users', JSON.stringify(authUsersDB));
     addAuthLog(currentUser.userId, currentUser.name, 'EXCLUIR_USER', `Usuário ${user.name} (${user.email}) excluído definitivamente.`);
     showToast(`Usuário ${user.name} removido do sistema.`, 'success');
     renderAdminPanel();
