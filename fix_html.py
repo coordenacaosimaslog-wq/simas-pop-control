@@ -1,14 +1,68 @@
-import re
+import codecs
+with codecs.open('index.html', 'r', 'utf-8') as f:
+    content = f.read()
 
-with open('index.html', 'r', encoding='utf-8', errors='ignore') as f:
-    text = f.read()
+idx = content.find('<input type="checkbox" id="perm-viewLogs"')
 
-# Fix table header
-text = re.sub(r'<th>.*?rea.*?</th>', '<th>Área</th>', text)
-# Fix labels
-text = re.sub(r'<label for="filter-.*?rea">.*?rea</label>', '<label for="filter-area">Área</label>', text)
+if idx != -1:
+    end_of_label = content.find('</label>', idx) + 8
+    
+    new_tail = """
+                            <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg-hover);border:1px solid var(--border-color);border-radius:var(--radius-md);cursor:pointer;font-size:0.83rem;font-weight:500;">
+                                <input type="checkbox" id="perm-manageUsers" style="accent-color:var(--brand);width:16px;height:16px;"> Gerenciar usuários
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-outline" onclick="closeEditUserModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-floppy-disk"></i> Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-with open('index.html', 'w', encoding='utf-8') as f:
-    f.write(text)
+    <!-- ==================== CONTAINER DE TOASTS DO SISTEMA ==================== -->
+    <div class="toast-container" id="toast-container-id"></div>
 
-print('Fixed index.html remaining artifacts!')
+    <!-- Firebase SDK (Compat version for simplicity) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
+    
+    <!-- SheetJS (Excel Parsing) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    
+    <!-- Configuração do Firebase -->
+    <script src="firebase-config.js"></script>
+    
+    <!-- JAVASCRIPT LOCAL -->
+    <script>
+        function togglePasswordVisibility(inputId, icon) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+    </script>
+    
+    <script src="app.js"></script>
+    <!-- JS Autenticacao e Gestao de Usuarios -->
+    <script src="auth.js"></script>
+</body>
+</html>
+"""
+    
+    new_content = content[:end_of_label] + new_tail
+    with codecs.open('index.html', 'w', 'utf-8') as f2:
+        f2.write(new_content)
+    print('Corrigido!')
+else:
+    print('Não encontrou')
