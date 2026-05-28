@@ -49,22 +49,34 @@ let authUsersLoaded = false;
 async function loadAuthUsers() {
     return new Promise((resolve) => {
         try {
-            db.collection("simas_users").onSnapshot((snapshot) => {
-                authUsersDB = snapshot.docs.map(doc => doc.data());
+            if (typeof db !== 'undefined') {
+                db.collection("simas_users").onSnapshot((snapshot) => {
+                    authUsersDB = snapshot.docs.map(doc => doc.data());
+                    authUsersLoaded = true;
+                    
+                    const adminPanel = document.getElementById("admin-panel");
+                    if (adminPanel && adminPanel.classList.contains("active")) {
+                        renderAdminUsersList();
+                    }
+                    resolve();
+                }, (error) => {
+                    console.error("Erro no onSnapshot do Firebase:", error);
+                    const offline = SafeStorage.getItem('simas_offline_users');
+                    if (offline) authUsersDB = JSON.parse(offline);
+                    authUsersLoaded = true;
+                    resolve();
+                });
+            } else {
+                const offline = SafeStorage.getItem('simas_offline_users');
+                if (offline) authUsersDB = JSON.parse(offline);
                 authUsersLoaded = true;
-                
-                const adminPanel = document.getElementById("admin-panel");
-                if (adminPanel && adminPanel.classList.contains("active")) {
-                    renderAdminUsersList();
-                }
                 resolve();
-            }, (error) => {
-                console.error("Erro no onSnapshot do Firebase:", error);
-                showToast("Erro ao conectar no servidor. Verifique permissões.", "error");
-                resolve();
-            });
+            }
         } catch (e) {
             console.error("Exceção ao ligar onSnapshot:", e);
+            const offline = SafeStorage.getItem('simas_offline_users');
+            if (offline) authUsersDB = JSON.parse(offline);
+            authUsersLoaded = true;
             resolve();
         }
     });
@@ -83,14 +95,25 @@ async function saveUserToCloud(userObj) {
 }
 
 async function loadAuthLogs() {
-    db.collection("simas_auth_logs").orderBy("timestamp", "desc").limit(50).onSnapshot((snapshot) => {
-        authLogsDB = snapshot.docs.map(doc => doc.data());
-        
-        const adminPanel = document.getElementById("admin-panel");
-        if (adminPanel && adminPanel.classList.contains("active")) {
-            renderAdminAuthLogs();
+    try {
+        if (typeof db !== 'undefined') {
+            db.collection("simas_auth_logs").orderBy("timestamp", "desc").limit(50).onSnapshot((snapshot) => {
+                authLogsDB = snapshot.docs.map(doc => doc.data());
+                
+                const adminPanel = document.getElementById("admin-panel");
+                if (adminPanel && adminPanel.classList.contains("active")) {
+                    renderAdminAuthLogs();
+                }
+            });
+        } else {
+            const offline = SafeStorage.getItem('simas_offline_logs');
+            if (offline) authLogsDB = JSON.parse(offline);
         }
-    });
+    } catch (e) {
+        console.error("Erro load logs:", e);
+        const offline = SafeStorage.getItem('simas_offline_logs');
+        if (offline) authLogsDB = JSON.parse(offline);
+    }
 }
 
 async function addAuthLog(userId, userName, action, detail, ip = 'local') {
