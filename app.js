@@ -253,7 +253,7 @@ try {
 // Variáveis Globais Adicionais
 let activeView = "dashboard";
 let currentPage = 1;
-const itemsPerPage = 5;
+const itemsPerPage = 20;
 let filteredPops = [];
 let trainings = [];
 let filteredTrainings = [];
