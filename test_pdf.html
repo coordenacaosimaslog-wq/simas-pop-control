@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+    <script>
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            if (typeof doc.autoTable === 'function') {
+                console.log("doc.autoTable EXISTS!");
+            } else {
+                console.log("doc.autoTable DOES NOT EXIST");
+                if (typeof window.jspdf.jsPDF.autoTable === 'function') {
+                    console.log("It is window.jspdf.jsPDF.autoTable");
+                }
+            }
+        } catch(e) {
+            console.log("ERROR", e.message);
+        }
+    </script>
+</body>
+</html>
