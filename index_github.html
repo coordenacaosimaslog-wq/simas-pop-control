@@ -6,7 +6,7 @@
     <title>Simas POP Control | SIMAS LOGÃSTICA LTDA</title>
     
     <!-- CSS Estilos -->
-    <link rel="stylesheet" href="styles.css?v=1780343220?v=1780341205">
+    <link rel="stylesheet" href="styles.css">
     
     <!-- Ãcones Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -576,8 +576,8 @@
                                 <i class="fa-solid fa-file-excel text-success"></i> Exportar Excel
                             </button>
 
-                            <button class="btn-outline" onclick="openExportPDFModal('MASTER_LIST')" id="btn-export-master-id" title="Baixar Lista Mestre em PDF" style="border-color: var(--brand); color: var(--brand);">
-                                <i class="fa-solid fa-file-pdf"></i> Lista Mestre
+                            <button class="btn-outline" onclick="exportMasterList()" id="btn-export-master-id" title="Baixar Lista Mestre Geral" style="border-color: var(--brand); color: var(--brand);">
+                                <i class="fa-solid fa-list-check"></i> Lista Mestre
                             </button>
                             
                             <button class="btn-outline" onclick="window.print()" id="btn-print-pdf-id" title="Gerar Relatório em PDF">
@@ -690,7 +690,7 @@
                             <button class="btn-outline" onclick="clearTrainingFilters()">
                                 <i class="fa-solid fa-eraser" style="color: #ef4444;"></i> Limpar
                             </button>
-                            <button class="btn-outline" onclick="openExportPDFModal('TRAININGS')" title="Exportar para PDF" style="border-color: #0B1D32; color: #0B1D32;">
+                            <button class="btn-outline" onclick="exportTrainingsToPDF()" title="Exportar para PDF" style="border-color: #0B1D32; color: #0B1D32;">
                                 <i class="fa-solid fa-file-pdf"></i> PDF
                             </button>
                             <button class="btn-outline" onclick="downloadTrainingTemplate()" title="Baixar Planilha Modelo">
@@ -1524,39 +1524,9 @@
         }
     </script>
     
-    
-    <!-- Modal Exportar PDF por Filial -->
-    <div id="pdf-filial-modal" class="modal-overlay">
-        <div class="modal-container" style="max-width: 400px;">
-            <div class="modal-header">
-                <h3><i class="fa-solid fa-file-pdf"></i> Gerar PDF do Cronograma</h3>
-                <button class="btn-close" onclick="closeExportPDFModal()"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label style="margin-bottom: 8px; display: block; font-weight: 500;">Selecione a Filial para o cabeçalho:</label>
-                    <select id="pdf-filial-select" class="form-control">
-                        <option value="MATRIZ">MATRIZ (MT)</option>
-                        <option value="SOROCABA">SOROCABA (SC)</option>
-                        <option value="SÃO ROQUE">SÃO ROQUE (SR)</option>
-                        <option value="CAMAÇARI">CAMAÇARI (CAM)</option>
-                        <option value="FUNEAS">FUNEAS (PR)</option>
-                        <option value="SJP PREFEITURA">SJP PREFEITURA (SJP)</option>
-                        <option value="TIGRE">TIGRE (TG)</option>
-                        <option value="JUATUBA">JUATUBA (JB)</option>
-                        <option value="GOVERNADOR VALADARES">GOVERNADOR VALADARES (GV)</option>
-                    </select>
-                </div>
-                <div class="form-actions" style="margin-top: 20px;">
-                    <button class="btn-primary" onclick="generatePDFForFilial()" style="width: 100%;"><i class="fa-solid fa-download"></i> Gerar PDF</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script src="firebase-config.js"></script>
-    <script src="app.js?v=1780343220?v=1780341205"></script>
+    <script src="app.js"></script>
     <!-- JS Autenticacao e Gestao de Usuarios -->
-    <script src="auth.js?v=1780343220?v=1780341205"></script>
+    <script src="auth.js"></script>
 </body>
 </html>

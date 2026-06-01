@@ -1,0 +1,245 @@
+                        <button class="btn-icon" onclick="downloadPOP('${pop.id}')" title="Baixar documento"><i class="fa-solid fa-download"></i></button>
+                        <button class="btn-icon" onclick="openDetailsModal('${pop.id}')" title="Visualizar informações"><i class="fa-solid fa-circle-info"></i></button>
+                        <button class="btn-icon" onclick="openHistoryModal('${pop.id}')" title="Histórico de revisões"><i class="fa-solid fa-clock-rotate-left"></i></button>
+                        <button class="btn-icon" onclick="openViewerModal('${pop.id}')" title="Visualizar POP"><i class="fa-solid fa-eye"></i></button>
+                        ${editBtn}
+                        ${deleteBtn}
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+        // Paginao UI
+        document.getElementById("table-pagination-info-id").innerHTML = `Exibindo <strong>${startIndex + 1}-${endIndex}</strong> de <strong>${totalItems}</strong> POPs`;
+        document.getElementById("btn-prev-page-id").disabled = (currentPage === 1);
+        document.getElementById("btn-next-page-id").disabled = (currentPage === totalPages || totalPages === 0);
+        
+        const pagesContainer = document.getElementById("pagination-pages-list");
+        pagesContainer.innerHTML = "";
+        for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement("button");
+            btn.className = `btn-page ${i === currentPage ? 'active' : ''}`;
+            btn.innerText = i;
+            btn.onclick = () => {
+                currentPage = i;
+                renderPopsTable();
+            };
+            pagesContainer.appendChild(btn);
+        }
+    } catch (e) {
+        console.error("Erro ao renderizar tabela de POPs:", e);
+    }
+}
+
+function prevPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        renderPopsTable();
+    }
+}
+
+function nextPage() {
+    const totalPages = Math.ceil(filteredPops.length / itemsPerPage);
+    if (currentPage < totalPages) {
+        currentPage++;
+        renderPopsTable();
+    }
+}
+
+// ==================== 13. CADASTRO E EDIÇÃO (CRUD) ====================
+function autoSuggestNextRevision() {
+    try {
+        const inputVal = document.getElementById("form-pop-data-revisao").value;
+        if (inputVal) {
+            const parts = inputVal.split("-");
+            if (parts.length === 3) {
+                const year = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10) - 1; // Mês 0-indexado
+                const day = parseInt(parts[2], 10);
+                
+                const base = new Date(year, month, day);
+                base.setFullYear(base.getFullYear() + 2);
+                
+                const y = base.getFullYear();
+                const m = String(base.getMonth() + 1).padStart(2, '0');
+                const d = String(base.getDate()).padStart(2, '0');
+                
+                document.getElementById("form-pop-proxima-revisao").value = `${y}-${m}-${d}`;
+            }
+        }
+    } catch (e) {
+        console.error("Erro ao calcular próxima revisão:", e);
+    }
+}
+
+function triggerFileUpload() {
+    document.getElementById("form-pop-file").click();
+}
+
+function getFileIconClass(filename) {
+    if (!filename) return "fa-file-lines text-secondary";
+    const ext = filename.split('.').pop().toLowerCase();
+    if (ext === 'pdf') return 'fa-file-pdf text-danger';
+    if (ext === 'xlsx' || ext === 'xls' || ext === 'xlsm') return 'fa-file-excel text-success';
+    if (ext === 'docx' || ext === 'doc') return 'fa-file-word text-primary';
+    return 'fa-file-lines text-secondary';
+}
+
+function processSelectedFile(file) {
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            activeUploadedFile = {
+                name: file.name,
+                size: (file.size / (1024 * 1024)).toFixed(1) + " MB",
+                data: e.target.result // Base64 data URL
+            };
+            
+            document.getElementById("upload-zone").style.display = "none";
+            document.getElementById("uploaded-file-info").style.display = "flex";
+            document.getElementById("uploaded-filename").innerText = activeUploadedFile.name;
+            document.getElementById("uploaded-filesize").innerText = activeUploadedFile.size;
+            
+            const iconElem = document.getElementById("uploaded-file-icon");
+            if (iconElem) {
+                iconElem.className = "fa-solid " + getFileIconClass(file.name);
+            }
+            
+            showToast(`Anexo '${file.name}' carregado com sucesso para upload.`, "success");
+        };
+        reader.onerror = function() {
+            showToast("Erro ao ler o arquivo local.", "danger");
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function handleFileSelect(event) {
+    try {
+        const file = event.target.files[0];
+        processSelectedFile(file);
+    } catch (e) {
+        console.error("Erro no upload do arquivo:", e);
+    }
+}
+
+function removeUploadedFile(event) {
+    event.stopPropagation();
+    event.preventDefault();
+    
+    activeUploadedFile = null;
+    document.getElementById("form-pop-file").value = "";
+    document.getElementById("uploaded-file-info").style.display = "none";
+    document.getElementById("upload-zone").style.display = "flex";
+}
+
+function openCreatePOPModal() {
+    try {
+        if (!currentUser.permissions.create) {
+            showToast("Nível de acesso insuficiente para cadastrar documentos.", "error");
+            return;
+        }
+        
+        document.getElementById("form-pop-id").value = "";
+        document.getElementById("pop-form").reset();
+        document.getElementById("pop-modal-title").innerHTML = `<i class="fa-solid fa-file-circle-plus"></i> Registrar Novo POP`;
+        document.getElementById("btn-save-pop-submit").innerText = "Registrar POP";
+        
+        const statusSelect = document.getElementById("form-pop-status");
+        if (statusSelect) {
+            Array.from(statusSelect.options).forEach(opt => opt.disabled = false);
+            if (!currentUser.isAdmin) {
+                statusSelect.value = "AGUARDANDO APROVAÇAO";
+                statusSelect.disabled = true;
+            } else {
+                statusSelect.disabled = false;
+            }
+        }
+        
+        activeUploadedFile = null;
+        document.getElementById("uploaded-file-info").style.display = "none";
+        document.getElementById("upload-zone").style.display = "flex";
+        
+        document.getElementById("pop-modal").classList.add("active");
+    } catch (e) {
+        console.error("Erro ao abrir modal de criacao:", e);
+    }
+}
+
+function openEditPOPModal(id) {
+    try {
+        if (!currentUser.permissions.edit) {
+            showToast("Nível de acesso insuficiente para propor edições.", "error");
+            return;
+        }
+        
+        const pop = pops.find(p => p.id === id);
+        if (!pop) return;
+        
+        document.getElementById("form-pop-id").value = pop.id;
+        document.getElementById("form-pop-codigo").value = pop.codigo;
+        document.getElementById("form-pop-titulo").value = pop.titulo;
+        document.getElementById("form-pop-filial").value = pop.filial;
+        document.getElementById("form-pop-tipo").value = pop.tipo || "POP";
+        document.getElementById("form-pop-abrangencia").value = pop.abrangencia || "Global";
+        document.getElementById("form-pop-area").value = pop.area;
+        document.getElementById("form-pop-responsavel").value = pop.responsavel;
+        const statusSelect = document.getElementById("form-pop-status");
+        statusSelect.value = pop.status;
+        document.getElementById("form-pop-data-revisao").value = pop.dataRevisao;
+        document.getElementById("form-pop-proxima-revisao").value = pop.proximaRevisao;
+        document.getElementById("form-pop-observacoes").value = pop.observacoes || "";
+        
+        activeUploadedFile = { name: pop.arquivo, size: "1.8 MB" };
+        
+        document.getElementById("upload-zone").style.display = "none";
+        document.getElementById("uploaded-file-info").style.display = "flex";
+        document.getElementById("uploaded-filename").innerText = pop.arquivo;
+        
+        const iconElem = document.getElementById("uploaded-file-icon");
+        if (iconElem) {
+            iconElem.className = "fa-solid " + getFileIconClass(pop.arquivo);
+        }
+        document.getElementById("uploaded-filesize").innerText = "1.8 MB";
+        
+        document.getElementById("pop-modal-title").innerHTML = `<i class="fa-solid fa-file-pen"></i> Atualizar POP: ${pop.codigo}`;
+        document.getElementById("btn-save-pop-submit").innerText = "Salvar Alterações";
+        
+        if (statusSelect) {
+            Array.from(statusSelect.options).forEach(opt => opt.disabled = false);
+            if (!currentUser.isAdmin) {
+                statusSelect.disabled = true;
+            } else {
+                statusSelect.disabled = false;
+            }
+        }
+        
+        document.getElementById("pop-modal").classList.add("active");
+    } catch (e) {
+        console.error("Erro ao abrir modal de edição:", e);
+    }
+}
+
+function closePOPModal() {
+    document.getElementById("pop-modal").classList.remove("active");
+}
+
+async function savePOP(event) {
+    event.preventDefault();
+    try {
+        const id = document.getElementById("form-pop-id").value;
+        const codigo = document.getElementById("form-pop-codigo").value.trim().toUpperCase();
+        const titulo = document.getElementById("form-pop-titulo").value.trim();
+        const filial = document.getElementById("form-pop-filial").value;
+        const tipo = document.getElementById("form-pop-tipo").value;
+        const abrangencia = document.getElementById("form-pop-abrangencia").value;
+        const area = document.getElementById("form-pop-area").value;
+        const responsavel = document.getElementById("form-pop-responsavel").value.trim();
+        let status = document.getElementById("form-pop-status").value;
+        if (!currentUser.isAdmin) {
+            status = "AGUARDANDO APROVAÇAO";
+        }
+        const dataRevisao = document.getElementById("form-pop-data-revisao").value;
+        const proximaRevisao = document.getElementById("form-pop-proxima-revisao").value;
+        const observacoes = document.getElementById("form-pop-observacoes").value.trim();
