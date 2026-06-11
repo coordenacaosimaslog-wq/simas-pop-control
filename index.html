@@ -6,7 +6,7 @@
     <title>Simas POP Control | SIMAS LOGÃSTICA LTDA</title>
     
     <!-- CSS Estilos -->
-    <link rel="stylesheet" href="styles.css?v=1780343220?v=1780341205">
+    <link rel="stylesheet" href="styles.css?v=1781203838?v=1781203490?v=1781203187?v=1781202841?v=1781202281?v=1781192940?v=1780343220?v=1780341205">
     
     <!-- Ãcones Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -300,7 +300,7 @@
             <!-- HEADER SUPERIOR -->
             <header class="main-header">
                 <div class="header-title-area">
-                    <h2 id="header-current-view-title">Dashboard Operacional</h2>
+                    <h2 id="header-current-view-title">Controle Corporativo de POPs</h2>
                     <p id="header-current-view-desc">Monitoramento e conformidade de revisões em tempo real</p>
                 </div>
 
@@ -415,7 +415,7 @@
                         <!-- Gráfico 1: POPs por Filial (Barras) -->
                         <div class="chart-card">
                             <div class="chart-header">
-                                <h3><i class="fa-solid fa-chart-column"></i> POPs por Filiais Operacionais</h3>
+                                <h3><i class="fa-solid fa-chart-column"></i> POPs POR FILIAIS</h3>
                                 <span class="badge-total-charts" style="font-size: 0.75rem; color: var(--text-secondary);" id="chart-total-filiais-lbl">9 Filiais</span>
                             </div>
                             <div class="chart-body">
@@ -538,7 +538,9 @@
                                 <select id="filter-status" onchange="applyFilters()">
                                     <option value="">Todos</option>
                                     <option value="REVISADO">REVISADO</option>
-                                    <option value="AGUARDANDO APROVAÇAO">AGUARDANDO APROVAÇÃO</option>
+                                    <option value="AGUARDANDO APROVAÇAO">AGUARDANDO APROVAÇÃO</option>
+                            <option value="AGUARDANDO REVISÃO">AGUARDANDO REVISÃO</option>
+                                    <option value="AGUARDANDO REVISÃO">AGUARDANDO REVISÃO</option>
                                     <option value="COPIA NÃO CONTROLADA">CÓPIA NÃO CONTROLADA</option>
                                     <option value="HOMOLOGADO">HOMOLOGADO</option>
                                     <option value="VENCIDO">VENCIDO</option>
@@ -1129,7 +1131,8 @@
                     <div class="form-group-modal">
                         <label for="form-pop-status">Status Regulatório *</label>
                         <select id="form-pop-status" required>
-                            <option value="AGUARDANDO APROVAÇAO">AGUARDANDO APROVAÇÃO</option>
+                            <option value="AGUARDANDO APROVAÇAO">AGUARDANDO APROVAÇÃO</option>
+                            <option value="AGUARDANDO REVISÃO">AGUARDANDO REVISÃO</option>
                             <option value="REVISADO">REVISADO</option>
                             <option value="COPIA NÃO CONTROLADA">CÓPIA NÃO CONTROLADA</option>
                             <option value="HOMOLOGADO">HOMOLOGADO</option>
@@ -1555,8 +1558,8 @@
     </div>
 
     <script src="firebase-config.js"></script>
-    <script src="app.js?v=1780343220?v=1780341205"></script>
+    <script src="app.js?v=1781203838?v=1781203490?v=1781203187?v=1781202841?v=1781202281?v=1781192940?v=1780343220?v=1780341205"></script>
     <!-- JS Autenticacao e Gestao de Usuarios -->
-    <script src="auth.js?v=1780343220?v=1780341205"></script>
+    <script src="auth.js?v=1781203838?v=1781203490?v=1781203187?v=1781202841?v=1781202281?v=1781192940?v=1780343220?v=1780341205"></script>
 </body>
 </html>

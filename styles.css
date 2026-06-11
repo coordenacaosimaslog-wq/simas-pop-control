@@ -1467,9 +1467,24 @@ input[type="date"]:focus, textarea:focus {
     color: #1B7F3A;
 }
 
+@keyframes pulse-amber {
+    0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
 .status-badge.aguardando {
-    background-color: #FFF4D6;
-    color: #B7791F;
+    background-color: #FEF3C7;
+    color: #B45309;
+    border: 1px solid #FDE68A;
+    animation: pulse-amber 2s infinite;
+}
+
+.row-aguardando {
+    background-color: #FFFBEB !important;
+}
+.row-aguardando td:first-child {
+    border-left: 4px solid #F59E0B;
 }
 
 .status-badge.homologado {

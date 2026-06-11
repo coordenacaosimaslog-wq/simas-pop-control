@@ -550,7 +550,7 @@ function switchView(viewId) {
         const desc = document.getElementById("header-current-view-desc");
         
         if (viewId === "dashboard") {
-            if (title) title.innerText = "Dashboard Operacional";
+            if (title) title.innerText = "Controle Corporativo de POPs";
             if (desc) desc.innerText = "Painel consolidado com indicadores de qualidade, gráficos e urgências documentais";
             setTimeout(() => {
                 initOrUpdateCharts();
@@ -819,6 +819,23 @@ function initOrUpdateCharts() {
             ctxFilial.height = 100;
             chartFilialInstance = new Chart(ctxFilial, {
                 type: 'bar',
+                plugins: [{
+                    id: 'customDataLabels',
+                    afterDatasetsDraw(chart) {
+                        const { ctx, data } = chart;
+                        ctx.save();
+                        ctx.font = 'bold 13px Montserrat, sans-serif';
+                        ctx.fillStyle = '#0B1D32';
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'middle';
+                        chart.getDatasetMeta(0).data.forEach((datapoint, index) => {
+                            const value = data.datasets[0].data[index];
+                            if (value > 0) {
+                                ctx.fillText(value, datapoint.x + 8, datapoint.y);
+                            }
+                        });
+                    }
+                }],
                 data: {
                     labels: filiais,
                     datasets: [{
@@ -841,11 +858,13 @@ function initOrUpdateCharts() {
                     },
                     scales: {
                         x: {
-                            grid: { color: '#E2E8F0' },
-                            ticks: { stepSize: 1, color: '#4A6B82' }
+                            grid: { display: false },
+                            border: { display: false },
+                            ticks: { display: false }
                         },
                         y: {
                             grid: { display: false },
+                            border: { display: false },
                             ticks: { color: '#0B1D32', font: { weight: '600' } }
                         }
                     }
@@ -1091,8 +1110,9 @@ function renderPopsTable() {
             } else if (pop.status === "HOMOLOGADO") {
                 statusClass += "homologado";
                 statusIcon = "fa-stamp";
-            } else if (pop.status === "AGUARDANDO APROVAÇAO") {
-                statusClass += "validacao";
+            } else if (pop.status === "AGUARDANDO APROVAÇAO" || pop.status === "AGUARDANDO REVISÃO") {
+                statusClass += "aguardando";
+                tr.className = "row-aguardando";
                 statusIcon = "fa-clock-rotate-left";
             } else if (pop.status === "VENCIDO") {
                 statusClass += "vencido";
@@ -1103,7 +1123,7 @@ function renderPopsTable() {
             let deleteBtn = `<button class="btn-icon delete" onclick="deletePOP('${pop.id}')" title="Excluir POP"><i class="fa-solid fa-trash"></i></button>`;
             let downloadBtn = `<button class="btn-icon" onclick="downloadPOP('${pop.id}')" style="color: var(--brand);" title="Baixar Arquivo"><i class="fa-solid fa-download"></i></button>`;
             let approveBtn = "";
-            if (currentUser.isAdmin && pop.status === "AGUARDANDO APROVAÇAO") {
+            if (currentUser.isAdmin && (pop.status === "AGUARDANDO APROVAÇAO" || pop.status === "AGUARDANDO REVISÃO")) {
                 approveBtn = `<button class="btn-icon" onclick="approvePOP('${pop.id}')" style="color: #2E7D32; border-color: #BBF7D0;" title="Aprovar/Revisar POP"><i class="fa-solid fa-check-circle"></i></button>`;
             }
             
@@ -1483,7 +1503,10 @@ async function savePOP(event) {
             showToast("Fazendo upload fragmentado do anexo...", "info");
             const fileData = activeUploadedFile.data;
             // Pedaços de ~800 mil caracteres (cerca de 800KB)
-            const chunks = fileData.match(/.{1,800000}/g) || [];
+            const chunks = [];
+            for (let i = 0; i < fileData.length; i += 800000) {
+                chunks.push(fileData.substring(i, i + 800000));
+            }
             
             await db.collection("simas_pops").doc(newIdStr).update({ numChunks: chunks.length });
             
@@ -1511,12 +1534,200 @@ async function savePOP(event) {
         checkExpirationsAndAlert();
     } catch (e) {
         console.error("Erro ao salvar POP:", e);
-        showToast("Erro crítico ao salvar documento na nuvem.", "error");
+        showToast("Erro crítico: " + e.message, "error");
     }
 }
+
 async function deletePOP(id) {
     try {
         if (!currentUser.permissions.delete) {
+            showToast("Nível de acesso insuficiente para exclusão definitiva.", "error");
+            return;
+        }
+        
+        const pop = pops.find(p => p.id === id);
+        if (!pop) return;
+        
+        document.getElementById("form-pop-id").value = pop.id;
+        document.getElementById("form-pop-codigo").value = pop.codigo;
+        document.getElementById("form-pop-titulo").value = pop.titulo;
+        document.getElementById("form-pop-filial").value = pop.filial;
+        document.getElementById("form-pop-tipo").value = pop.tipo || "POP";
+        document.getElementById("form-pop-abrangencia").value = pop.abrangencia || "Global";
+        document.getElementById("form-pop-area").value = pop.area;
+        document.getElementById("form-pop-responsavel").value = pop.responsavel;
+        document.getElementById("form-pop-status").value = pop.status;
+        document.getElementById("form-pop-data-revisao").value = pop.dataRevisao;
+        document.getElementById("form-pop-proxima-revisao").value = pop.proximaRevisao;
+        document.getElementById("form-pop-observacoes").value = pop.observacoes || "";
+        
+        activeUploadedFile = { name: pop.arquivo, size: "1.8 MB" };
+        
+        document.getElementById("upload-zone").style.display = "none";
+        document.getElementById("uploaded-file-info").style.display = "flex";
+        document.getElementById("uploaded-filename").innerText = pop.arquivo;
+        
+        // Atualiza ícone do arquivo na edição
+        const iconElem = document.getElementById("uploaded-file-icon");
+        if (iconElem) {
+            iconElem.className = "fa-solid " + getFileIconClass(pop.arquivo);
+        }
+        document.getElementById("uploaded-filesize").innerText = "1.8 MB";
+        
+        document.getElementById("pop-modal-title").innerHTML = `<i class="fa-solid fa-file-pen"></i> Atualizar POP: ${pop.codigo}`;
+        document.getElementById("btn-save-pop-submit").innerText = "Salvar Alterações";
+        
+        // Regras de validao baseadas no papel
+        const statusSelect = document.getElementById("form-pop-status");
+        if (statusSelect) {
+            if (!currentUser.permissions.validate) {
+                // Remove opção "Revisado" para quem não é Qualidade/Gestão
+                Array.from(statusSelect.options).forEach(opt => {
+                    if (opt.value === 'REVISADO') opt.disabled = true;
+                });
+            } else {
+                Array.from(statusSelect.options).forEach(opt => opt.disabled = false);
+            }
+        }
+        
+        document.getElementById("pop-modal").classList.add("active");
+    } catch (e) {
+        console.error("Erro ao abrir modal de edição:", e);
+    }
+}
+
+function closePOPModal() {
+    document.getElementById("pop-modal").classList.remove("active");
+}
+
+async function savePOP(event) {
+    event.preventDefault();
+    try {
+        const id = document.getElementById("form-pop-id").value;
+        const codigo = document.getElementById("form-pop-codigo").value.trim().toUpperCase();
+        const titulo = document.getElementById("form-pop-titulo").value.trim();
+        const filial = document.getElementById("form-pop-filial").value;
+        const tipo = document.getElementById("form-pop-tipo").value;
+        const abrangencia = document.getElementById("form-pop-abrangencia").value;
+        const area = document.getElementById("form-pop-area").value;
+        const responsavel = document.getElementById("form-pop-responsavel").value.trim();
+        let status = document.getElementById("form-pop-status").value;
+        if (!currentUser.isAdmin) {
+            status = "AGUARDANDO APROVAÇAO";
+        }
+        const dataRevisao = document.getElementById("form-pop-data-revisao").value;
+        const proximaRevisao = document.getElementById("form-pop-proxima-revisao").value;
+        const observacoes = document.getElementById("form-pop-observacoes").value.trim();
+        
+        if (!activeUploadedFile && !id) {
+            showToast("É obrigatório carregar um documento regulamentar (PDF/Word/Excel).", "error");
+            return;
+        }
+        
+        const todayStr = new Date().toISOString().split('T')[0];
+        let popToSave = null;
+        let newIdStr = id;
+        
+        if (id) {
+            const index = pops.findIndex(p => p.id === id);
+            if (index === -1) return;
+            
+            const oldPop = pops[index];
+            const oldStatus = oldPop.status;
+            
+            popToSave = {
+                ...oldPop,
+                codigo,
+                titulo,
+                filial,
+                tipo,
+                abrangencia,
+                area,
+                responsavel,
+                status,
+                dataRevisao,
+                proximaRevisao,
+                observacoes,
+                arquivo: activeUploadedFile ? activeUploadedFile.name : oldPop.arquivo,
+                historico: [
+                    ...oldPop.historico,
+                    { data: todayStr, autor: `${currentUser.name} (${currentUser.roleName})`, acao: `Edição de ciclo documental. Status anterior: ${oldStatus} -> Atual: ${status}.` }
+                ]
+            };
+            
+            if (popToSave.fileUrl) delete popToSave.fileUrl; // Limpar url legada se existir
+            
+            pops[index] = popToSave;
+            logAction("Edição", codigo, `Editou o POP ${codigo} (${filial}). Status alterado: ${oldStatus} -> ${status}.`);
+        } else {
+            if (pops.some(p => p.codigo === codigo)) {
+                showToast(`Código documental '${codigo}' já existente no sistema!`, "error");
+                return;
+            }
+            
+            const maxNum = pops.reduce((max, p) => {
+                const num = parseInt(p.id.replace("pop-", ""), 10);
+                return isNaN(num) ? max : Math.max(max, num);
+            }, 0);
+            newIdStr = "pop-" + String(maxNum + 1).padStart(3, '0');
+            popToSave = {
+                id: newIdStr,
+                codigo,
+                titulo,
+                filial,
+                tipo,
+                abrangencia,
+                area,
+                responsavel,
+                status,
+                dataRevisao,
+                proximaRevisao,
+                observacoes,
+                arquivo: activeUploadedFile ? activeUploadedFile.name : null,
+                historico: [
+                    { data: todayStr, autor: `${currentUser.name} (${currentUser.roleName})`, acao: `Criação documental primária. Status: ${status}.` }
+                ]
+            };
+            
+            pops.unshift(popToSave);
+            logAction("Criação", codigo, `Criou o POP ${codigo} (${filial}) na Área ${area}.`);
+        }
+        
+        // 1. Salvar os metadados principais no Firestore
+        showToast("Salvando metadados na nuvem...", "info");
+        await db.collection("simas_pops").doc(newIdStr).set(popToSave);
+        
+        // 2. Fragmentar o arquivo em partes de 800KB para driblar o limite de 1MB do Firestore
+        if (activeUploadedFile) {
+            showToast("Fazendo upload fragmentado do anexo...", "info");
+            const fileData = activeUploadedFile.data;
+            // Pedaços de ~800 mil caracteres (cerca de 800KB)
+            const chunks = [];
+            for (let i = 0; i < fileData.length; i += 800000) {
+                chunks.push(fileData.substring(i, i + 800000));
+            }
+            
+            await db.collection("simas_pops").doc(newIdStr).update({ numChunks: chunks.length });
+            
+            for (let i = 0; i < chunks.length; i++) {
+                await db.collection("simas_pops").doc(newIdStr).collection("chunks").doc(`chunk_${i}`).set({
+                    data: chunks[i],
+                    index: i
+                });
+            }
+        }
+        
+        if (!currentUser.isAdmin) {
+            showToast(`POP '${codigo}' enviado! Aguardando aprovação do administrador.`, "success");
+        } else {
+            showToast(`POP '${codigo}' salvo na nuvem com sucesso!`, "success");
+        }
+        closePOPModal();
+        
+        if (!id) {
+            currentPage = 1;
+            clearFilters(false);
+        } else {
             showToast("Nível de acesso insuficiente para exclusão definitiva.", "error");
             return;
         }
