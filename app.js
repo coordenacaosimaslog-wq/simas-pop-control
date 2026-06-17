@@ -1337,15 +1337,6 @@ function openCreatePOPModal() {
     } catch (e) {
         console.error("Erro ao abrir modal de criacao:", e);
         }
-        
-        activeUploadedFile = null;
-        document.getElementById("uploaded-file-info").style.display = "none";
-        document.getElementById("upload-zone").style.display = "flex";
-        
-        document.getElementById("pop-modal").classList.add("active");
-    } catch (e) {
-        console.error("Erro ao abrir modal de criacao:", e);
-    }
 }
 
 function openEditPOPModal(id) {

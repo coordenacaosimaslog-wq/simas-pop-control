@@ -17,15 +17,11 @@ def check_braces(file_path):
             elif c == '/' and i+1 < len(content) and content[i+1] == '*':
                 in_comment_block = True
                 i += 1
-            elif c in ['"', "'", '`']:
+            elif c in ['\"', \"'\", '`']:
                 in_string = True
                 string_char = c
             elif c == '{': curly += 1
-            elif c == '}': 
-                curly -= 1
-                if curly < 0:
-                    print(f'Negative curly at line {content.count(chr(10), 0, i) + 1}')
-                    curly = 0
+            elif c == '}': curly -= 1
             elif c == '(': round_b += 1
             elif c == ')': round_b -= 1
             elif c == '[': square += 1
@@ -37,9 +33,12 @@ def check_braces(file_path):
                 in_comment_block = False
                 i += 1
         elif in_string:
-            if c == '\\' and i+1 < len(content): i += 1
+            if c == '\\\\' and i+1 < len(content): i += 1
             elif c == string_char: in_string = False
         i += 1
-    print(f'Final -> Curly: {curly}, Round: {round_b}, Square: {square}')
+        if curly < 0:
+            print(f'Negative curly at line {content.count(chr(10), 0, i) + 1}')
+            curly = 0
+    print(f'Curly: {curly}, Round: {round_b}, Square: {square}')
 
 check_braces('app.js')
