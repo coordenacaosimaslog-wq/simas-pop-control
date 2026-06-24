@@ -1293,6 +1293,7 @@ input[type="date"]:focus, textarea:focus {
     gap: 4px;
 }
 
+#pagination-pages-list { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; justify-content: center; }
 .btn-page {
     min-width: 30px;
     height: 30px;

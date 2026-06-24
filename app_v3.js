@@ -305,51 +305,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         fillLoginFields('qualidade');
 
         // Configurar Drag and Drop no Campo de Upload
-        const uploadZone = document.getElementById("upload-zone");
-        if (uploadZone) {
-            // Prevent default drag behaviors on window to avoid accidentally opening files
-            window.addEventListener('dragover', (e) => { e.preventDefault(); }, false);
-            window.addEventListener('drop', (e) => { e.preventDefault(); }, false);
-
-            uploadZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (e.dataTransfer) {
-                    e.dataTransfer.dropEffect = 'copy';
-                }
-                uploadZone.classList.add("dragover");
-            }, false);
-
-            uploadZone.addEventListener('dragenter', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                uploadZone.classList.add("dragover");
-            }, false);
-
-            uploadZone.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                uploadZone.classList.remove("dragover");
-            }, false);
-
-            uploadZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                uploadZone.classList.remove("dragover");
-                
-                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                    const fileInput = document.getElementById("form-pop-file");
-                    if (fileInput) {
-                        try {
-                            fileInput.files = e.dataTransfer.files;
-                        } catch (err) {
-                            console.warn("Could not set fileInput.files", err);
-                        }
-                    }
-                    processSelectedFile(e.dataTransfer.files[0]);
-                }
-            }, false);
-        }
+        /* Drag events now handled inline */
     } catch (e) {
         console.error("Erro na inicializao do sistema:", e);
     }
@@ -1017,11 +973,13 @@ function applyFilters() {
         const searchVal = getVal("pop-search-input").toLowerCase().trim();
         
         filteredPops = pops.filter(pop => {
-            if (filialVal && pop.filial !== filialVal) return false;
-            if (tipoVal && pop.tipo !== tipoVal) return false;
-            if (areaVal && pop.area !== areaVal) return false;
-            if (statusVal && pop.status !== statusVal) return false;
-            if (abrangenciaVal && (pop.abrangencia || "Global") !== abrangenciaVal) return false;
+            const safeLower = (str) => String(str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+            
+            if (filialVal && !safeLower(pop.filial).includes(safeLower(filialVal))) return false;
+            if (tipoVal && safeLower(pop.tipo) !== safeLower(tipoVal)) return false;
+            if (areaVal && safeLower(pop.area) !== safeLower(areaVal)) return false;
+            if (statusVal && safeLower(pop.status) !== safeLower(statusVal)) return false;
+            if (abrangenciaVal && safeLower(pop.abrangencia || "Global") !== safeLower(abrangenciaVal)) return false;
             
             if (anoRevVal && pop.dataRevisao) {
                 if (!String(pop.dataRevisao).startsWith(anoRevVal)) return false;
@@ -1260,6 +1218,42 @@ function autoSuggestNextRevision() {
         console.error("Erro ao calcular próxima revisão:", e);
     }
 }
+
+
+// Global drag events for upload-zone
+window.handleDragOver = function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    const zone = document.getElementById("upload-zone");
+    if(zone) zone.classList.add("drag-over");
+};
+window.handleDragEnter = function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const zone = document.getElementById("upload-zone");
+    if(zone) zone.classList.add("drag-over");
+};
+window.handleDragLeave = function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const zone = document.getElementById("upload-zone");
+    if(zone) zone.classList.remove("drag-over");
+};
+window.handleDrop = function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const zone = document.getElementById("upload-zone");
+    if(zone) zone.classList.remove("drag-over");
+    
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const fileInput = document.getElementById("form-pop-file");
+        if (fileInput) {
+            try { fileInput.files = e.dataTransfer.files; } catch(err) { console.warn(err); }
+        }
+        processSelectedFile(e.dataTransfer.files[0]);
+    }
+};
 
 function triggerFileUpload() {
     document.getElementById("form-pop-file").click();
@@ -2679,3 +2673,168 @@ async function approvePOP(id) {
 
 
 
+
+
+// ==================== BULK IMPORT ====================
+async function handleBulkImportSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Check permissions
+    if (!currentUser.permissions.create) {
+        showToast("Nível de acesso insuficiente para realizar importações em massa.", "error");
+        document.getElementById("bulk-import-file").value = "";
+        return;
+    }
+    
+    showToast("Lendo arquivo Excel...", "info");
+    
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // Expected headers are not strictly enforced by name, we assume column order or specific names if possible
+            // To be robust, let's read the raw array of arrays to map columns by index, or by header matching.
+            // Using header: 1 gives an array of arrays
+            const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: ""});
+            
+            if (rows.length < 2) {
+                showToast("A planilha parece estar vazia ou sem dados válidos.", "error");
+                return;
+            }
+            
+            // Assume Row 0 is header.
+            // Find column indexes based on keywords to make it flexible
+            const headers = rows[0].map(h => String(h).toUpperCase().trim());
+            
+            const idxCodigo = headers.findIndex(h => h.includes("CÓDIGO") || h.includes("CODIGO"));
+            const idxTitulo = headers.findIndex(h => h.includes("TÍTULO") || h.includes("TITULO"));
+            const idxFilial = headers.findIndex(h => h.includes("FILIAL"));
+            const idxTipo = headers.findIndex(h => h.includes("TIPO"));
+            const idxAbrangencia = headers.findIndex(h => h.includes("ABRANGÊNCIA") || h.includes("ABRANGENCIA"));
+            const idxArea = headers.findIndex(h => h.includes("ÁREA") || h.includes("AREA"));
+            const idxResp = headers.findIndex(h => h.includes("RESPONSÁVEL") || h.includes("RESPONSAVEL"));
+            const idxStatus = headers.findIndex(h => h.includes("STATUS"));
+            const idxDataRev = headers.findIndex(h => h.includes("DATA") && h.includes("REVIS"));
+            
+            if (idxCodigo === -1 || idxTitulo === -1 || idxArea === -1) {
+                showToast("A planilha precisa ter pelo menos as colunas: Código, Título e Área.", "error");
+                return;
+            }
+            
+            let successCount = 0;
+            let skippedCount = 0;
+            
+            const todayStr = new Date().toISOString().split('T')[0];
+            
+            // Find max ID to start from
+            let maxNum = pops.reduce((max, p) => {
+                const num = parseInt(p.id.replace("pop-", ""), 10);
+                return isNaN(num) ? max : Math.max(max, num);
+            }, 0);
+            
+            showToast("Iniciando importação em lote...", "info");
+            
+            // Iterate rows starting from index 1
+            for (let i = 1; i < rows.length; i++) {
+                const r = rows[i];
+                if (!r || r.length === 0) continue;
+                
+                const codigo = r[idxCodigo] ? String(r[idxCodigo]).trim().toUpperCase() : "";
+                if (!codigo) continue; // Skip empty rows
+                
+                // Check for duplicates
+                if (pops.some(p => p.codigo === codigo)) {
+                    skippedCount++;
+                    continue; // Skip existing
+                }
+                
+                const titulo = r[idxTitulo] ? String(r[idxTitulo]).trim() : "Sem Título";
+                const filial = idxFilial !== -1 && r[idxFilial] ? String(r[idxFilial]).trim() : "MATRIZ (SÃO PAULO)";
+                const tipo = idxTipo !== -1 && r[idxTipo] ? String(r[idxTipo]).trim() : "POP";
+                const abrangencia = idxAbrangencia !== -1 && r[idxAbrangencia] ? String(r[idxAbrangencia]).trim() : "Global";
+                const area = r[idxArea] ? String(r[idxArea]).trim() : "Não Informada";
+                const responsavel = idxResp !== -1 && r[idxResp] ? String(r[idxResp]).trim() : "N/A";
+                const status = idxStatus !== -1 && r[idxStatus] ? String(r[idxStatus]).trim().toUpperCase() : "AGUARDANDO APROVAÇÃO";
+                
+                // Tratar Data de Revisão
+                let dataRevisao = todayStr;
+                if (idxDataRev !== -1 && r[idxDataRev]) {
+                    // Excel dates might be numbers or strings
+                    let d = r[idxDataRev];
+                    if (typeof d === 'number') {
+                        const date = new Date(Math.round((d - 25569) * 86400 * 1000));
+                        dataRevisao = date.toISOString().split('T')[0];
+                    } else if (typeof d === 'string') {
+                        // Assuming DD/MM/YYYY
+                        const parts = d.split('/');
+                        if (parts.length === 3) dataRevisao = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+                        else dataRevisao = d; // fallback
+                    }
+                }
+                
+                // Calculate next revision (+2 years)
+                let proximaRevisao = "";
+                try {
+                    let dRev = new Date(dataRevisao);
+                    if (!isNaN(dRev.getTime())) {
+                        dRev.setFullYear(dRev.getFullYear() + 2);
+                        proximaRevisao = dRev.toISOString().split('T')[0];
+                    }
+                } catch(e){}
+                
+                maxNum++;
+                const newIdStr = "pop-" + String(maxNum).padStart(3, '0');
+                
+                const popToSave = {
+                    id: newIdStr,
+                    codigo,
+                    titulo,
+                    filial,
+                    tipo,
+                    abrangencia,
+                    area,
+                    responsavel,
+                    status,
+                    dataRevisao,
+                    proximaRevisao,
+                    observacoes: "Importado via planilha de lote.",
+                    arquivo: null, // No file attached during bulk import
+                    historico: [
+                        { data: todayStr, autor: `${currentUser.name} (${currentUser.roleName})`, acao: `Criação documental primária via importação em massa.` }
+                    ]
+                };
+                
+                // Save to Firebase
+                if (typeof db !== 'undefined') {
+                    await db.collection("simas_pops").doc(newIdStr).set(popToSave);
+                }
+                
+                // Add to local array
+                pops.push(popToSave);
+                successCount++;
+            }
+            
+            renderPopsTable();
+            renderMetricsGrid();
+            
+            showToast(`Importação Concluída: ${successCount} salvos, ${skippedCount} ignorados (já existiam).`, "success");
+            
+        } catch (err) {
+            console.error("Erro na leitura da planilha:", err);
+            showToast("Erro ao processar o arquivo Excel.", "error");
+        }
+        
+        // Reset input
+        document.getElementById("bulk-import-file").value = "";
+    };
+    reader.onerror = function() {
+        showToast("Erro ao ler o arquivo local.", "error");
+        document.getElementById("bulk-import-file").value = "";
+    };
+    reader.readAsArrayBuffer(file);
+}
