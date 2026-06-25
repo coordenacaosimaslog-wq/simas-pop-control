@@ -1011,6 +1011,17 @@ function applyFilters() {
             return true;
         });
         
+        filteredPops.sort((a, b) => {
+            const filialA = (a.filial || "").toUpperCase();
+            const filialB = (b.filial || "").toUpperCase();
+            if (filialA < filialB) return -1;
+            if (filialA > filialB) return 1;
+            
+            const codigoA = (a.codigo || "").toUpperCase();
+            const codigoB = (b.codigo || "").toUpperCase();
+            return codigoA.localeCompare(codigoB, undefined, { numeric: true, sensitivity: 'base' });
+        });
+        
         currentPage = 1;
         renderPopsTable();
         if(typeof renderMetricsGrid === 'function') renderMetricsGrid();
@@ -1580,7 +1591,7 @@ async function savePOP(event) {
         await db.collection("simas_pops").doc(newIdStr).set(popToSave);
         
         // 2. Fragmentar o arquivo em partes de 800KB para driblar o limite de 1MB do Firestore
-        if (activeUploadedFile) {
+        if (activeUploadedFile && activeUploadedFile.data) {
             showToast("Fazendo upload fragmentado do anexo...", "info");
             const fileData = activeUploadedFile.data;
             // Pedaços de ~800 mil caracteres (cerca de 800KB)
