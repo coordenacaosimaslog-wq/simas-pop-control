@@ -706,7 +706,7 @@ function initOrUpdateCharts() {
         const countsStatus = {
             Revisado: pops.filter(pop => pop.status === "REVISADO").length,
             Validacao: pops.filter(pop => pop.status === "AGUARDANDO APROVAÇAO").length,
-            Aprovado: pops.filter(pop => pop.status === "COPIA NÃO CONTROLADA").length,
+            Aprovado: pops.filter(pop => pop.status === "AGUARDANDO TREINAMENTO").length,
             Homologado: pops.filter(pop => pop.status === "HOMOLOGADO").length,
             Vencido: pops.filter(pop => pop.status === "VENCIDO").length
         };
@@ -768,7 +768,7 @@ function initOrUpdateCharts() {
                             <span><i class="fa-solid fa-circle" style="color:#3b82f6;"></i> AGUARDANDO APROVAÇAO:</span> <strong>${countsStatus.Validacao} (${((countsStatus.Validacao/total)*100).toFixed(0)}%)</strong>
                         </div>
                         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:6px;">
-                            <span><i class="fa-solid fa-circle" style="color:#0d9488;"></i> COPIA NÃO CONTROLADA:</span> <strong>${countsStatus.Aprovado} (${((countsStatus.Aprovado/total)*100).toFixed(0)}%)</strong>
+                            <span><i class="fa-solid fa-circle" style="color:#0d9488;"></i> AGUARDANDO TREINAMENTO:</span> <strong>${countsStatus.Aprovado} (${((countsStatus.Aprovado/total)*100).toFixed(0)}%)</strong>
                         </div>
                         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:6px;">
                             <span><i class="fa-solid fa-circle" style="color:#8b5cf6;"></i> HOMOLOGADO:</span> <strong>${countsStatus.Homologado} (${((countsStatus.Homologado/total)*100).toFixed(0)}%)</strong>
@@ -851,7 +851,7 @@ function initOrUpdateCharts() {
             chartStatusInstance = new Chart(ctxStatus, {
                 type: 'doughnut',
                 data: {
-                    labels: ['REVISADO', 'AGUARDANDO APROVAÇAO', 'COPIA NÃO CONTROLADA', 'HOMOLOGADO', 'VENCIDO'],
+                    labels: ['REVISADO', 'AGUARDANDO APROVAÇAO', 'AGUARDANDO TREINAMENTO', 'HOMOLOGADO', 'VENCIDO'],
                     datasets: [{
                         data: [countsStatus.Revisado, countsStatus.Validacao, countsStatus.Aprovado, countsStatus.Homologado, countsStatus.Vencido],
                         backgroundColor: ['#0B1D32', '#F57C00', '#6A1B9A', '#2E7D32', '#A30D00'], /* Novas cores solicitadas */
@@ -976,7 +976,7 @@ function applyFilters() {
             const safeLower = (str) => String(str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
             
             if (filialVal && !safeLower(pop.filial).includes(safeLower(filialVal))) return false;
-            if (tipoVal && safeLower(pop.tipo) !== safeLower(tipoVal)) return false;
+            if (tipoVal && safeLower(pop.tipo || "POP") !== safeLower(tipoVal)) return false;
             if (areaVal && safeLower(pop.area) !== safeLower(areaVal)) return false;
             if (statusVal && safeLower(pop.status) !== safeLower(statusVal)) return false;
             if (abrangenciaVal && safeLower(pop.abrangencia || "Global") !== safeLower(abrangenciaVal)) return false;
