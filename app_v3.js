@@ -1276,6 +1276,7 @@ function getFileIconClass(filename) {
     if (ext === 'pdf') return 'fa-file-pdf text-danger';
     if (ext === 'xlsx' || ext === 'xls') return 'fa-file-excel text-success';
     if (ext === 'docx' || ext === 'doc') return 'fa-file-word text-primary';
+    if (ext === 'pptx' || ext === 'ppt') return 'fa-file-powerpoint' + ' style="color:#d97706"';
     return 'fa-file-lines text-secondary';
 }
 
@@ -1284,11 +1285,11 @@ function processSelectedFile(file) {
 
     try {
         // Validação de formato
-        const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'xlsm'];
+        const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'xlsm', 'ppt', 'pptx'];
         const extension = file.name.split('.').pop().toLowerCase();
         
         if (!allowedExtensions.includes(extension)) {
-            showToast("Formato não permitido. Utilize PDF, DOCX ou XLSX.", "error");
+            showToast("Formato não permitido. Utilize PDF, DOCX, XLSX ou PPTX.", "error");
             document.getElementById("form-pop-file").value = "";
             return;
         }
