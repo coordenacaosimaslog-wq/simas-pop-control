@@ -1,4 +1,4 @@
-﻿/*
+/*
  * SIMAS LOGÃSTICA LTDA â€” CONTROLE DE REVISÃƒO DE POPS
  * DESIGN SYSTEM v2.0 â€” IDENTIDADE CORPORATIVA PREMIUM MULTINACIONAL
  * Inspirado em: DHL Supply Chain Â· CEVA Logistics Â· Maersk Â· SAP Enterprise Â· Power BI Corporate
@@ -36,11 +36,18 @@
     --graphite-500:    #4A6B82;   /* Texto secundÃ¡rio */
     --graphite-400:    #6D8D9C;
     --graphite-300:    #9BB1C1;   /* Texto terciÃ¡rio */
+
+    /* === CORES DE STATUS (BADGES) === */
+    --success-color:   #15803D;   /* Verde para Fechada/Aprovada */
+    --danger-color:    #B91C1C;   /* Vermelho para Aberta/Vencida */
+    --warning-color:   #B45309;   /* Laranja para Em Tratamento */
+    --secondary-color: #64748B;   /* Cinza para status secundários */
+    --dark-color:      #0F172A;   /* Escuro para Cancelada/Arquivada */
     --graphite-200:    #CCD6DD;   /* Borda forte */
     --graphite-100:    #EAF0F4;   /* Borda suave */
     --graphite-5:      #F4F7FA;   /* Fundo frio limpo */
 
-    /* === FUNDOS E SUPERFÃCIES === */
+    /* === FUNDOS E SUPERFÃ CIES === */
     --bg-main:         #F4F7FA;   /* Fundo aplicaÃ§Ã£o â€” off-white frio azulado premium */
     --bg-card:         #FFFFFF;   /* Cards e painÃ©is */
     --bg-hover:        #EBF1F6;   /* Hover em linhas */
@@ -2180,7 +2187,8 @@ input[type="date"]:focus, textarea:focus {
 }
 
 /* ForÃ§ar responsividade e scroll horizontal sem espremer colunas */
-#view-trainings .table-container {
+#view-trainings .table-container,
+#view-ncs .table-container {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);

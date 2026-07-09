@@ -239,6 +239,29 @@ async function loadSimasData() {
     }
 }
 
+
+        // --- INICIALIZACAO DE NCs ---
+        if (typeof db !== 'undefined') {
+            db.collection("nonConformities").onSnapshot((snapshot) => {
+                try {
+                    if (!snapshot.empty) {
+                        ncs = snapshot.docs.map(doc => {
+                            let data = doc.data();
+                            data.id = doc.id;
+                            return data;
+                        });
+                        if (activeView === 'ncs') {
+                            applyNcFilters();
+                        }
+                    } else {
+                        ncs = [];
+                        if (activeView === 'ncs') renderNcTable();
+                    }
+                } catch(e) { console.error("Erro processando NCs:", e); }
+            }, (error) => { console.error("Erro listener NCs:", error); });
+        }
+
+
 // Chamar a função imediatamente
 loadSimasData();
 
@@ -256,6 +279,8 @@ let currentPage = 1;
 const itemsPerPage = 20;
 let filteredPops = [];
 let trainings = [];
+let ncs = [];
+let filteredNcs = [];
 let filteredTrainings = [];
 let chartFilialInstance = null;
 let chartAreaInstance = null;
@@ -535,6 +560,11 @@ function switchView(viewId) {
             if (title) title.innerText = "Cronograma de Treinamento";
             if (desc) desc.innerText = "Agendamento, acompanhamento e registro de treinamentos da qualidade";
             if (typeof applyTrainingFilters === 'function') applyTrainingFilters();
+        } else if (viewId === "ncs") {
+            if (title) title.innerText = "Controle de Não Conformidades";
+            if (desc) desc.innerText = "Gestão de desvios, ações corretivas e preventivas";
+            updateNcDashboard();
+            applyNcFilters();
         } else if (viewId === "audit") {
             if (title) title.innerText = "Histórico de Logs (Trilha de Auditoria)";
             if (desc) desc.innerText = "Log regulatório de conformidade da Simas Logística (Anvisa / ISO)";
@@ -1357,6 +1387,125 @@ function removeUploadedFile(event) {
     document.getElementById("upload-zone").style.display = "flex";
 }
 
+// ==================== LÓGICA DE UPLOAD PARA NCs ====================
+let activeNcUploadedFile = null;
+
+window.handleNcDragOver = function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    const zone = document.getElementById("nc-upload-zone");
+    if(zone) zone.classList.add("drag-over");
+};
+window.handleNcDragEnter = function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const zone = document.getElementById("nc-upload-zone");
+    if(zone) zone.classList.add("drag-over");
+};
+window.handleNcDragLeave = function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const zone = document.getElementById("nc-upload-zone");
+    if(zone) zone.classList.remove("drag-over");
+};
+window.handleNcDrop = function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const zone = document.getElementById("nc-upload-zone");
+    if(zone) zone.classList.remove("drag-over");
+    
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const fileInput = document.getElementById("form-nc-file");
+        if (fileInput) {
+            fileInput.files = e.dataTransfer.files;
+            processNcSelectedFile(e.dataTransfer.files[0]);
+        }
+    }
+};
+
+function processNcSelectedFile(file) {
+    if (!file) return;
+
+    try {
+        const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'xlsm', 'ppt', 'pptx', 'jpg', 'jpeg', 'png'];
+        const extension = file.name.split('.').pop().toLowerCase();
+        
+        if (!allowedExtensions.includes(extension)) {
+            showToast("Formato não permitido para NCs.", "error");
+            document.getElementById("form-nc-file").value = "";
+            return;
+        }
+
+        const maxSizeInBytes = 15 * 1024 * 1024;
+        if (file.size > maxSizeInBytes) {
+            showToast("Arquivo excede o limite máximo permitido de 15MB.", "error");
+            document.getElementById("form-nc-file").value = "";
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            activeNcUploadedFile = {
+                name: file.name,
+                size: (file.size / (1024 * 1024)).toFixed(1) + " MB",
+                data: e.target.result // Base64 data URL
+            };
+            
+            document.getElementById("nc-upload-zone").style.display = "none";
+            document.getElementById("nc-uploaded-file-info").style.display = "flex";
+            document.getElementById("nc-uploaded-filename").innerText = activeNcUploadedFile.name;
+            document.getElementById("nc-uploaded-filesize").innerText = activeNcUploadedFile.size;
+            
+            const iconElem = document.getElementById("nc-uploaded-file-icon");
+            if (iconElem) {
+                iconElem.className = "fa-solid " + getFileIconClass(file.name);
+            }
+            
+            showToast(`Anexo '${file.name}' carregado para a NC.`, "success");
+        };
+        reader.onerror = function() {
+            showToast("Não foi possível processar o arquivo. Tente novamente.", "error");
+            document.getElementById("form-nc-file").value = "";
+        };
+        reader.readAsDataURL(file);
+    } catch (e) {
+        console.error("Erro no processamento do arquivo:", e);
+        showToast("Não foi possível processar o arquivo. Tente novamente.", "error");
+        document.getElementById("form-nc-file").value = "";
+    }
+}
+
+function handleNcFileSelect(event) {
+    try {
+        const file = event.target.files[0];
+        if (file) {
+            processNcSelectedFile(file);
+        }
+    } catch (e) {
+        console.error("Erro no upload do arquivo:", e);
+        showToast("Não foi possível processar o arquivo. Tente novamente.", "error");
+    }
+}
+
+function removeNcUploadedFile(event) {
+    if(event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    
+    activeNcUploadedFile = null;
+    const fileInput = document.getElementById("form-nc-file");
+    if(fileInput) fileInput.value = "";
+    
+    const infoZone = document.getElementById("nc-uploaded-file-info");
+    const dropZone = document.getElementById("nc-upload-zone");
+    
+    if(infoZone) infoZone.style.display = "none";
+    if(dropZone) dropZone.style.display = "block";
+}
+// ==================== FIM LÓGICA DE UPLOAD PARA NCs ====================
+
 function openCreatePOPModal() {
     try {
         if (!currentUser.permissions.create) {
@@ -1551,7 +1700,6 @@ async function savePOP(event) {
             
             if (popToSave.fileUrl) delete popToSave.fileUrl; // Limpar url legada se existir
             
-            pops[index] = popToSave;
             logAction("Edição", codigo, `Editou o POP ${codigo} (${filial}). Status alterado: ${oldStatus} -> ${status}.`);
         } else {
             if (pops.some(p => p.codigo === codigo)) {
@@ -1583,7 +1731,6 @@ async function savePOP(event) {
                 ]
             };
             
-            pops.unshift(popToSave);
             logAction("Criação", codigo, `Criou o POP ${codigo} (${filial}) na Área ${area}.`);
         }
         
@@ -2099,6 +2246,48 @@ async function downloadPOP(id) {
     }
 }
 
+async function downloadNcAttachment(id) {
+    try {
+        const nc = ncs.find(n => n.id === id);
+        if (!nc || !nc.arquivo) {
+            showToast("Esta NC não possui anexo.", "error");
+            return;
+        }
+        
+        showToast(`Baixando anexo: ${nc.arquivo}...`, "info");
+        
+        let fileData = nc.fileData;
+        
+        if (nc.numChunks && nc.numChunks > 0) {
+            let assembledData = "";
+            for (let i = 0; i < nc.numChunks; i++) {
+                const chunkDoc = await db.collection("nonConformities").doc(id).collection("chunks").doc(`chunk_${i}`).get();
+                if (chunkDoc.exists) {
+                    assembledData += chunkDoc.data().data;
+                }
+            }
+            if (assembledData.length > 0) {
+                fileData = assembledData;
+            }
+        }
+        
+        if (fileData) {
+            const link = document.createElement("a");
+            link.setAttribute("href", fileData);
+            link.setAttribute("download", nc.arquivo);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("Download do anexo concluído!", "success");
+        } else {
+            showToast("Anexo não encontrado na nuvem.", "error");
+        }
+    } catch (e) {
+        console.error("Erro ao baixar anexo da NC:", e);
+        showToast("Falha ao baixar o anexo. Tente novamente.", "error");
+    }
+}
+
 
 
 // ============================================================
@@ -2277,13 +2466,9 @@ async function saveTraining() {
         
         if (id) {
             trainingObj.id = id;
-            const idx = trainings.findIndex(t => t.id === id);
-            if (idx !== -1) trainings[idx] = trainingObj;
-            else trainings.push(trainingObj);
         } else {
             trainingObj.id = 'train-' + Date.now();
             trainingObj.createdAt = new Date().toISOString();
-            trainings.push(trainingObj);
         }
         
         // Salvar offline
@@ -2458,8 +2643,6 @@ async function importTrainingsExcel(event) {
                     dataRealizacao: parseExcelDate(row[7]),
                     createdAt: new Date().toISOString()
                 };
-                
-                trainings.push(trainingObj);
                 
                 if (typeof db !== 'undefined') {
                     await db.collection('simas_trainings').doc(trainingObj.id).set(trainingObj);
@@ -2826,8 +3009,6 @@ async function handleBulkImportSelect(event) {
                     await db.collection("simas_pops").doc(newIdStr).set(popToSave);
                 }
                 
-                // Add to local array
-                pops.push(popToSave);
                 successCount++;
             }
             
@@ -2849,4 +3030,587 @@ async function handleBulkImportSelect(event) {
         document.getElementById("bulk-import-file").value = "";
     };
     reader.readAsArrayBuffer(file);
+}
+
+
+
+// ============================================================
+// MÓDULO DE NÃO CONFORMIDADES (NCs)
+// ============================================================
+
+const filialPrefixes = {
+    "São Roque": "SR",
+    "Sorocaba": "SC",
+    "Matriz": "MTZ",
+    "Camaçari": "CA",
+    "Funeas": "SJP FN",
+    "SJP Prefeitura": "SJP PF",
+    "Patrimônio": "PTM",
+    "Governador Valadares": "GV",
+    "Juatuba": "JB",
+    "Tigre": "TG",
+    "Contagem": "CTG"
+};
+
+
+function updateNcDashboard() {
+    try {
+        let total = ncs.length;
+        let abertas = ncs.filter(nc => nc.status === 'Aberta').length;
+        let tratamento = ncs.filter(nc => nc.status === 'Em Tratamento').length;
+        let fechadas = ncs.filter(nc => nc.status === 'Fechada').length;
+        
+        const elTotal = document.getElementById("nc-card-total");
+        const elAbertas = document.getElementById("nc-card-abertas");
+        const elTratamento = document.getElementById("nc-card-tratamento");
+        const elFechadas = document.getElementById("nc-card-fechadas");
+        
+        if (elTotal) elTotal.innerText = total;
+        if (elAbertas) elAbertas.innerText = abertas;
+        if (elTratamento) elTratamento.innerText = tratamento;
+        if (elFechadas) elFechadas.innerText = fechadas;
+    } catch (e) {
+        console.error("Erro ao atualizar dashboard NC", e);
+    }
+}
+
+function filterNcByStatus(status) {
+    const statusSelect = document.getElementById("filter-nc-status");
+    if (statusSelect) {
+        statusSelect.value = status;
+        applyNcFilters();
+    }
+}
+
+function applyNcFilters() {
+    try {
+        const getVal = (id) => { const el = document.getElementById(id); return el ? el.value : ""; };
+        const filialVal = getVal("filter-nc-filial");
+        const statusVal = getVal("filter-nc-status");
+        const clienteVal = getVal("filter-nc-cliente");
+        const responsavelVal = getVal("filter-nc-responsavel");
+        const searchVal = getVal("nc-search-input").toLowerCase().trim();
+        
+        filteredNcs = ncs.filter(nc => {
+            if (filialVal && nc.filial !== filialVal) return false;
+            if (clienteVal && nc.cliente !== clienteVal) return false;
+            if (statusVal && nc.status !== statusVal) return false;
+            if (responsavelVal && nc.responsavel !== responsavelVal) return false;
+            if (searchVal) {
+                const desc = String(nc.descricao || "").toLowerCase();
+                const cod = String(nc.codigo || "").toLowerCase();
+                if (!desc.includes(searchVal) && !cod.includes(searchVal)) return false;
+            }
+            return true;
+        });
+        
+        // Sort strictly ascending by codigo
+        filteredNcs.sort((a, b) => {
+            const codeA = String(a.codigo || "");
+            const codeB = String(b.codigo || "");
+            return codeA.localeCompare(codeB);
+        });
+        
+        updateNcDashboard();
+        renderNcTable();
+    } catch (e) {
+        console.error("Erro ao aplicar filtros de NCs:", e);
+    }
+}
+
+function renderNcTable() {
+    const tbody = document.getElementById("nc-table-body");
+    if (!tbody) return;
+    
+    if (filteredNcs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center">Nenhuma Não Conformidade encontrada.</td></tr>';
+        return;
+    }
+    
+    let html = "";
+    filteredNcs.forEach(nc => {
+        let badgeClass = 'secondary';
+        if (nc.status === 'Aberta') badgeClass = 'danger';
+        else if (nc.status === 'Em Tratamento') badgeClass = 'warning';
+        else if (nc.status === 'Fechada') badgeClass = 'success';
+        
+        const dataFormatada = nc.dataOcorrencia ? nc.dataOcorrencia.split('-').reverse().join('/') : '-';
+        
+        let actionButtons = `
+            <button class="btn-icon" onclick="editNc('${nc.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+        `;
+        if (nc.arquivo) {
+            actionButtons += `<button class="btn-icon text-primary" onclick="downloadNcAttachment('${nc.id}')" title="Baixar Anexo"><i class="fa-solid fa-paperclip"></i></button>`;
+        }
+        if (currentUser.isAdmin) {
+            actionButtons += `<button class="btn-icon text-danger" onclick="deleteNc('${nc.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>`;
+        }
+        
+        html += `
+            <tr>
+                <td style="font-weight: bold; color: var(--primary-color)">${nc.codigo || '-'}</td>
+                <td>${dataFormatada}</td>
+                <td>${nc.filial || '-'}</td>
+                <td>${nc.tipo || '-'}</td>
+                <td>${nc.setor || '-'}</td>
+                <td>${nc.origem || '-'}</td>
+                <td>${nc.identificacao || '-'}</td>
+                <td>${nc.cliente || '-'}</td>
+                <td>${nc.responsavel || '-'}</td>
+                <td><span class="badge" style="background-color: var(--${badgeClass}-color, gray); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">${nc.status || '-'}</span></td>
+                <td><div class="action-buttons">${actionButtons}</div></td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+function openCreateNcModal() {
+    if (!currentUser.permissions.create) {
+        showToast("Nível de acesso insuficiente para cadastrar NCs.", "error");
+        return;
+    }
+    
+    document.getElementById("form-nc-id").value = "";
+    document.getElementById("nc-form").reset();
+    document.getElementById("nc-modal-title").innerText = "Registrar Nova Não Conformidade";
+    document.getElementById("form-nc-codigo").value = "";
+    
+    // Clear upload state
+    activeNcUploadedFile = null;
+    const infoZone = document.getElementById("nc-uploaded-file-info");
+    const dropZone = document.getElementById("nc-upload-zone");
+    if(infoZone) infoZone.style.display = "none";
+    if(dropZone) dropZone.style.display = "block";
+
+    document.getElementById("nc-modal").classList.add("active");
+}
+
+function closeNcModal() {
+    document.getElementById("nc-modal").classList.remove("active");
+}
+
+function previewNcCode() {
+    const filial = document.getElementById("form-nc-filial").value;
+    const isEdit = document.getElementById("form-nc-id").value !== "";
+    if (isEdit) return; // Mantém o código original na edição
+    
+    if (filial) {
+        document.getElementById("form-nc-codigo").value = "Padrão: " + (filialPrefixes[filial] || "XX") + " XXX/YYYY";
+    }
+}
+
+async function generateNcId(filial, dataOcorrencia) {
+    const ano = dataOcorrencia ? dataOcorrencia.split('-')[0] : new Date().getFullYear().toString();
+    
+    // Normalize filial string to ignore case and accents
+    let prefixo = "XX";
+    if (filial) {
+        const filialNorm = filial.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+        for (const key in filialPrefixes) {
+            const keyNorm = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+            if (keyNorm === filialNorm) {
+                prefixo = filialPrefixes[key];
+                break;
+            }
+        }
+    }
+
+    
+    // Filtra todas as NCs dessa filial nesse ano
+    const samePrefixNcs = ncs.filter(nc => {
+        if (!nc.codigo) return false;
+        return nc.codigo.startsWith(prefixo + " ") && nc.codigo.endsWith("/" + ano);
+    });
+    
+    let maxNumber = 0;
+    samePrefixNcs.forEach(nc => {
+        // Ex: MTZ 001/2026 -> pega o 001
+        try {
+            const numPart = nc.codigo.split(' ')[1].split('/')[0];
+            const num = parseInt(numPart, 10);
+            if (!isNaN(num) && num > maxNumber) {
+                maxNumber = num;
+            }
+        } catch(e) {}
+    });
+    
+    const nextNumber = maxNumber + 1;
+    const formattedNumber = String(nextNumber).padStart(3, '0');
+    return `${prefixo} ${formattedNumber}/${ano}`;
+}
+
+async function saveNc(event) {
+    event.preventDefault();
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+        submitBtn.dataset.originalText = originalText;
+    }
+    try {
+        const id = document.getElementById("form-nc-id").value;
+        const filial = document.getElementById("form-nc-filial").value;
+        const dataOcorrencia = document.getElementById("form-nc-data").value;
+        const origem = document.getElementById("form-nc-origem").value;
+        const identificacao = document.getElementById("form-nc-identificacao").value;
+        const tipo = document.getElementById("form-nc-tipo").value;
+        const setor = document.getElementById("form-nc-setor").value;
+        const cliente = document.getElementById("form-nc-cliente").value;
+        const responsavel = document.getElementById("form-nc-responsavel").value;
+        const status = document.getElementById("form-nc-status").value;
+        const descricao = document.getElementById("form-nc-descricao").value.trim();
+                        
+        let codigo = document.getElementById("form-nc-codigo").value;
+        
+        let ncData = {
+            filial, dataOcorrencia, tipo, setor, origem, identificacao, cliente, responsavel, status, descricao,
+            updatedAt: new Date().toISOString(),
+            updatedBy: currentUser.username || "Desconhecido"
+        };
+        
+        if (activeNcUploadedFile) {
+            ncData.arquivo = activeNcUploadedFile.name;
+        }
+
+        let docIdToSave = null;
+        
+        if (id) {
+            // Edit
+            docIdToSave = id;
+            if (codigo && codigo.trim() !== "") {
+                ncData.codigo = codigo.trim();
+            }
+            if (!activeNcUploadedFile) {
+                // Keep the old file name
+                const oldNc = ncs.find(n => n.id === id);
+                if (oldNc && oldNc.arquivo) {
+                    ncData.arquivo = oldNc.arquivo;
+                }
+            }
+            await db.collection("nonConformities").doc(id).update(ncData);
+            showToast("Não Conformidade atualizada com sucesso!");
+
+        } else {
+            // Create
+            if (codigo && codigo.trim() !== "") {
+                codigo = codigo.trim();
+            } else {
+                codigo = await generateNcId(filial, dataOcorrencia);
+            }
+            ncData.codigo = codigo;
+            ncData.createdAt = new Date().toISOString();
+            ncData.createdBy = currentUser.username || "Desconhecido";
+            
+            const docRef = await db.collection("nonConformities").add(ncData);
+            docIdToSave = docRef.id;
+            showToast(`Não Conformidade ${codigo} registrada com sucesso!`);
+        }
+        
+        // 2. Fragmentar o arquivo em partes de 800KB para driblar o limite do Firestore
+        if (activeNcUploadedFile && activeNcUploadedFile.data && docIdToSave) {
+            showToast("Fazendo upload do anexo na nuvem...", "info");
+            const fileData = activeNcUploadedFile.data;
+            const chunks = [];
+            for (let i = 0; i < fileData.length; i += 800000) {
+                chunks.push(fileData.substring(i, i + 800000));
+            }
+            
+            await db.collection("nonConformities").doc(docIdToSave).update({ numChunks: chunks.length });
+            
+            for (let i = 0; i < chunks.length; i++) {
+                await db.collection("nonConformities").doc(docIdToSave).collection("chunks").doc(`chunk_${i}`).set({
+                    data: chunks[i],
+                    index: i
+                });
+            }
+        }
+        
+        closeNcModal();
+        applyNcFilters();
+    } catch (e) {
+        console.error("Erro ao salvar NC:", e);
+        showToast("Erro ao salvar Não Conformidade. Verifique o console.", "error");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.dataset.originalText || 'Salvar';
+        }
+    }
+}
+
+function setSelectValue(selectId, targetValue) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    if (!targetValue) {
+        select.value = "";
+        return;
+    }
+    
+    // First, exact match
+    select.value = targetValue;
+    if (select.value === targetValue) return;
+    
+    // Normalize string (remove accents and make uppercase)
+    const normalize = str => str.toString().normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
+    const targetNorm = normalize(targetValue);
+    
+    for (let i = 0; i < select.options.length; i++) {
+        if (normalize(select.options[i].value) === targetNorm || normalize(select.options[i].text) === targetNorm) {
+            select.selectedIndex = i;
+            return;
+        }
+    }
+    
+    // Fallback: leave empty if completely unmatched
+    select.value = "";
+}
+
+function editNc(id) {
+    if (!currentUser.permissions.edit) {
+        showToast("Nível de acesso insuficiente.", "error");
+        return;
+    }
+    
+    const nc = ncs.find(n => n.id === id);
+    if (!nc) return;
+    
+    document.getElementById("form-nc-id").value = nc.id;
+    document.getElementById("form-nc-codigo").value = nc.codigo || "";
+    document.getElementById("form-nc-data").value = nc.dataOcorrencia || "";
+    
+    // Select dropdowns with smart case-insensitive matching
+    setSelectValue("form-nc-filial", nc.filial);
+    setSelectValue("form-nc-origem", nc.origem);
+    setSelectValue("form-nc-identificacao", nc.identificacao);
+    setSelectValue("form-nc-tipo", nc.tipo);
+    setSelectValue("form-nc-setor", nc.setor);
+    setSelectValue("form-nc-cliente", nc.cliente);
+    setSelectValue("form-nc-responsavel", nc.responsavel);
+    setSelectValue("form-nc-status", nc.status);
+    
+    document.getElementById("form-nc-descricao").value = nc.descricao || "";
+    
+    // Handle existing file attachment display
+    if (nc.arquivo) {
+        activeNcUploadedFile = { name: nc.arquivo, size: "N/A" };
+        const infoZone = document.getElementById("nc-uploaded-file-info");
+        const dropZone = document.getElementById("nc-upload-zone");
+        if(infoZone) infoZone.style.display = "flex";
+        if(dropZone) dropZone.style.display = "none";
+        
+        const fname = document.getElementById("nc-uploaded-filename");
+        if(fname) fname.innerText = nc.arquivo;
+        
+        const fsize = document.getElementById("nc-uploaded-filesize");
+        if(fsize) fsize.innerText = "Armazenado";
+        
+        const iconElem = document.getElementById("nc-uploaded-file-icon");
+        if (iconElem) {
+            iconElem.className = "fa-solid " + (typeof getFileIconClass === "function" ? getFileIconClass(nc.arquivo) : "fa-file-lines");
+        }
+    } else {
+        activeNcUploadedFile = null;
+        const infoZone = document.getElementById("nc-uploaded-file-info");
+        const dropZone = document.getElementById("nc-upload-zone");
+        if(infoZone) infoZone.style.display = "none";
+        if(dropZone) dropZone.style.display = "block";
+    }
+            
+    document.getElementById("nc-modal-title").innerText = `Editar NC: ${nc.codigo}`;
+    document.getElementById("nc-modal").classList.add("active");
+}
+
+async function deleteNc(id) {
+    if (!currentUser.isAdmin) {
+        showToast("Apenas administradores podem excluir registros.", "error");
+        return;
+    }
+    
+    if (confirm("ATENÇÃO: Tem certeza que deseja excluir esta Não Conformidade? Esta ação não pode ser desfeita.")) {
+        try {
+            await db.collection("nonConformities").doc(id).delete();
+            ncs = ncs.filter(n => n.id !== id);
+            applyNcFilters();
+            showToast("Não Conformidade excluída com sucesso!");
+        } catch (e) {
+            console.error("Erro ao excluir NC:", e);
+            showToast("Erro ao excluir. Verifique sua conexão.", "error");
+        }
+    }
+}
+
+
+// ==================== IMPORTACAO EM MASSA DE NCs ====================
+async function importNcsExcel(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!currentUser.permissions.create) {
+        showToast("Nível de acesso insuficiente para importar NCs.", "error");
+        event.target.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+            if (rows.length === 0) {
+                showToast("A planilha está vazia.", "warning");
+                return;
+            }
+
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                
+                // Mapear colunas para os campos (aceita variações comuns de nome)
+                const filial = row["Filial"] || row["FILIAL"] || row["Unidade"] || "";
+                let dataOcorrencia = row["Data"] || row["Data Ocorrência"] || row["Data da Ocorrência"] || row["DATA"] || "";
+                const tipo = row["Tipo"] || row["Tipo de Registro"] || row["TIPO"] || "";
+                const setor = row["Setor"] || row["Setor de Origem"] || row["SETOR"] || "";
+                const origem = row["Origem"] || row["ORIGEM"] || "";
+                const identificacao = row["Identificação"] || row["Como foi Identificada?"] || row["IDENTIFICAÇÃO"] || "";
+                const cliente = row["Cliente"] || row["CLIENTE"] || "";
+                const responsavel = row["Responsável"] || row["Responsavel"] || row["RESPONSÁVEL"] || "";
+                let status = row["Status"] || row["STATUS"] || "Aberta";
+                const descricao = row["Descrição"] || row["Descricao"] || row["DESCRIÇÃO"] || "Importado via sistema";
+
+                // Pular linhas totalmente vazias
+                if (!filial && !tipo && !setor && !origem && !cliente) continue;
+
+                // Validação básica obrigatória
+                if (!filial || !dataOcorrencia || !tipo || !setor) {
+                    console.warn(`Linha ${i + 2} pulada por falta de dados obrigatórios (Filial/Data/Tipo/Setor).`);
+                    errorCount++;
+                    continue;
+                }
+
+                // Converter data do Excel caso venha como número de série
+                if (typeof dataOcorrencia === 'number') {
+                    const parsedDate = new Date(Math.round((dataOcorrencia - 25569) * 86400 * 1000));
+                    dataOcorrencia = parsedDate.toISOString().split('T')[0];
+                } else if (typeof dataOcorrencia === 'string' && dataOcorrencia.includes('/')) {
+                    // Converter DD/MM/YYYY para YYYY-MM-DD
+                    const parts = dataOcorrencia.split('/');
+                    if (parts.length === 3) {
+                        dataOcorrencia = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                    }
+                }
+                
+                // Normalizar status
+                status = status.trim();
+                if (!['Aberta', 'Em Tratamento', 'Fechada', 'Cancelada'].includes(status)) {
+                    status = 'Aberta';
+                }
+                // Extrair Código fornecido na planilha
+                let customCodigo = row["Código"] || row["Codigo"] || row["CÓDIGO"] || row["CODIGO"] || "";
+                customCodigo = customCodigo.toString().trim();
+
+                try {
+                    const codigo = customCodigo ? customCodigo : await generateNcId(filial, dataOcorrencia);
+                    
+                    let ncData = {
+                        codigo,
+                        filial,
+                        dataOcorrencia,
+                        tipo,
+                        setor,
+                        origem,
+                        identificacao,
+                        cliente,
+                        responsavel,
+                        status,
+                        descricao,
+                        createdAt: new Date().toISOString(),
+                        createdBy: currentUser.username || "Importação Lote",
+                        updatedAt: new Date().toISOString(),
+                        updatedBy: currentUser.username || "Importação Lote"
+                    };
+
+                    await db.collection("nonConformities").add(ncData);
+                    successCount++;
+                } catch (err) {
+                    console.error(`Erro ao salvar NC da linha ${i + 2}:`, err);
+                    errorCount++;
+                }
+            }
+
+            if (successCount > 0) {
+                showToast(`${successCount} NCs importadas com sucesso!`, "success");
+            }
+            if (errorCount > 0) {
+                showToast(`${errorCount} linhas falharam. Verifique o formato.`, "warning");
+            }
+            
+            // O listener onSnapshot vai atualizar a tabela automaticamente.
+
+        } catch (error) {
+            console.error("Erro processando arquivo Excel:", error);
+            showToast("Erro ao ler o arquivo Excel.", "error");
+        } finally {
+            event.target.value = ''; // Reset input
+        }
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+
+// ==================== BAIXAR MODELO DE IMPORTACAO ====================
+function downloadNcTemplate() {
+    try {
+        const wsData = [
+            {
+                "Código": "SR 25/2026",
+                "Filial": "Matriz",
+                "Data": "25/12/2026",
+                "Tipo de Registro": "Não Conformidade",
+                "Setor": "Armazenagem",
+                "Origem": "Auditoria Interna",
+                "Identificação": "E-mail",
+                "Cliente": "TIGRE",
+                "Responsável": "IARA",
+                "Status": "Aberta",
+                "Descrição": "Descreva aqui o detalhamento da não conformidade... (Apague esta linha e preencha com seus dados)"
+            }
+        ];
+        
+        const ws = XLSX.utils.json_to_sheet(wsData);
+        
+        // Ajustar largura das colunas
+        const wscols = [
+            {wch: 15}, // Código
+            {wch: 15}, // Filial
+            {wch: 12}, // Data
+            {wch: 20}, // Tipo de Registro
+            {wch: 20}, // Setor
+            {wch: 20}, // Origem
+            {wch: 15}, // Identificação
+            {wch: 20}, // Cliente
+            {wch: 15}, // Responsável
+            {wch: 15}, // Status
+            {wch: 50}  // Descrição
+        ];
+        ws['!cols'] = wscols;
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Modelo NCs");
+        
+        XLSX.writeFile(wb, "Modelo_Importacao_NCs.xlsx");
+        showToast("Modelo baixado com sucesso!", "success");
+    } catch (e) {
+        console.error("Erro ao gerar modelo:", e);
+        showToast("Erro ao gerar a planilha modelo.", "error");
+    }
 }

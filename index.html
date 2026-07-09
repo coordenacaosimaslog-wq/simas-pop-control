@@ -22,7 +22,7 @@
     <!-- CSS Estilos -->
 
 
-    <link rel="stylesheet" href="styles_v3.css?v=1782330150">
+    <link rel="stylesheet" href="styles_v3.css?v=1783541100">
 
 
     
@@ -751,21 +751,18 @@
                     </li>
 
 
-                    <li class="sidebar-item" id="menu-trainings" onclick="switchView('trainings')">
-
-
+                    <li class="sidebar-item" id="menu-ncs" onclick="switchView('ncs')">
                         <div class="sidebar-link">
-
-
-                            <i class="fa-solid fa-chalkboard-user"></i>
-
-
-                            <span>Treinamentos</span>
-
-
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <span>Não Conformidades</span>
                         </div>
+                    </li>
 
-
+                    <li class="sidebar-item" id="menu-trainings" onclick="switchView('trainings')">
+                        <div class="sidebar-link">
+                            <i class="fa-solid fa-chalkboard-user"></i>
+                            <span>Treinamentos</span>
+                        </div>
                     </li>
 
 
@@ -2174,6 +2171,147 @@
                 <!-- ABA 3: HISTÓRICO DE LOGS (AUDIT TRAIL) -->
 
 
+                
+                                <section id="view-ncs" class="spa-view">
+                    
+                    <!-- Dashboard de NCs -->
+                    <div class="metrics-grid" style="margin-bottom: 20px;">
+                        <div class="metric-card total" onclick="filterNcByStatus('')">
+                            <div class="metric-data">
+                                <h3>Total de NCs</h3>
+                                <div class="value" id="nc-card-total">0</div>
+                            </div>
+                            <div class="metric-icon"><i class="fa-solid fa-layer-group"></i></div>
+                        </div>
+                        <div class="metric-card expirado" onclick="filterNcByStatus('Aberta')">
+                            <div class="metric-data">
+                                <h3>Abertas</h3>
+                                <div class="value" id="nc-card-abertas">0</div>
+                            </div>
+                            <div class="metric-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                        </div>
+                        <div class="metric-card atencao" onclick="filterNcByStatus('Em Tratamento')">
+                            <div class="metric-data">
+                                <h3>Em Tratamento</h3>
+                                <div class="value" id="nc-card-tratamento">0</div>
+                            </div>
+                            <div class="metric-icon"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+                        </div>
+                        <div class="metric-card aprovado" onclick="filterNcByStatus('Fechada')">
+                            <div class="metric-data">
+                                <h3>Fechadas</h3>
+                                <div class="value" id="nc-card-fechadas">0</div>
+                            </div>
+                            <div class="metric-icon"><i class="fa-solid fa-circle-check"></i></div>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="filter-panel" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px;">
+                        <div class="filter-control" style="flex: 1; min-width: 150px;">
+                            <label for="filter-nc-filial">Filial</label>
+                            <select id="filter-nc-filial" onchange="applyNcFilters()">
+                                <option value="">Todas</option>
+                                <option value="Matriz">Matriz</option>
+                                <option value="Camaçari">Camaçari</option>
+                                <option value="Funeas">Funeas</option>
+                                <option value="SJP Prefeitura">SJP Prefeitura</option>
+                                <option value="São Roque">São Roque</option>
+                                <option value="Juatuba">Juatuba</option>
+                                <option value="Sorocaba">Sorocaba</option>
+                                <option value="Governador Valadares">Governador Valadares</option>
+                                <option value="Contagem">Contagem</option>
+                                <option value="Patrimônio">Patrimônio</option>
+                                <option value="Tigre">Tigre</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-control" style="flex: 1; min-width: 150px;">
+                            <label for="filter-nc-cliente">Cliente</label>
+                            <select id="filter-nc-cliente" onchange="applyNcFilters()">
+                                <option value="">Todos</option>
+                                <option value="PREFEITURA SJP">Prefeitura SJP</option>
+                                <option value="FUNEAS">Funeas</option>
+                                <option value="PREFEITURA DE CAMAÇARI">Prefeitura de Camaçari</option>
+                                <option value="CEMIG">Cemig</option>
+                                <option value="GASMIG">Gasmig</option>
+                                <option value="TIGRE">Tigre</option>
+                                <option value="ALFAPARF">Alfaparf</option>
+                                <option value="GLOBO PHARMA">Globo Pharma</option>
+                                <option value="INSTITUTO BUTANTAN">Instituto Butantan</option>
+                                <option value="TRT">TRT</option>
+                                <option value="HYPOFARMA">Hypofarma</option>
+                                <option value="CARTEPILLA">Cartepilla</option>
+                                <option value="PREFEITURA DE BH">Prefeitura de BH</option>
+                            </select>
+                        </div>
+                        <div class="filter-control" style="flex: 1; min-width: 150px;">
+                            <label for="filter-nc-status">Status</label>
+                            <select id="filter-nc-status" onchange="applyNcFilters()">
+                                <option value="">Todos</option>
+                                <option value="Aberta">Aberta</option>
+                                <option value="Em Tratamento">Em Tratamento</option>
+                                <option value="Fechada">Fechada</option>
+                                <option value="Cancelada">Cancelada</option>
+                            </select>
+                        </div>
+                        <div class="filter-control" style="flex: 1; min-width: 150px;">
+                            <label for="filter-nc-responsavel">Responsável</label>
+                            <select id="filter-nc-responsavel" onchange="applyNcFilters()">
+                                <option value="">Todos</option>
+                                <option value="IARA">Iara</option>
+                                <option value="SCARLET">Scarlet</option>
+                                <option value="DANILI">Danili</option>
+                                <option value="FABIANA">Fabiana</option>
+                                <option value="GABRIELA">Gabriela</option>
+                                <option value="KRISTIANE">Kristiane</option>
+                                <option value="BRUNO">Bruno</option>
+                                <option value="ANA CAROLINE">Ana Caroline</option>
+                            </select>
+                        </div>
+                        <div class="search-box" style="flex: 2; min-width: 250px;">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="nc-search-input" placeholder="Buscar por código ou descrição..." onkeyup="applyNcFilters()">
+                        </div>
+                        <div style="flex: 0 0 auto; display: flex; gap: 10px;">
+                            <button class="btn-outline" onclick="downloadNcTemplate()" style="height: 42px; display: flex; align-items: center; gap: 8px;" title="Baixar planilha modelo para preenchimento">
+                                <i class="fa-solid fa-download"></i> Baixar Modelo
+                            </button>
+                            <input type="file" id="import-nc-file" accept=".xlsx, .xls, .csv" style="display: none;" onchange="importNcsExcel(event)">
+                            <button class="btn-outline" onclick="document.getElementById('import-nc-file').click()" style="height: 42px; display: flex; align-items: center; gap: 8px;" title="Importar NCs em massa via Excel">
+                                <i class="fa-solid fa-file-import"></i> Importar Lote
+                            </button>
+                            <button class="btn-primary" onclick="openCreateNcModal()" style="height: 42px; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-plus"></i> Nova NC
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="table-container shadow-sm rounded">
+                        <table class="custom-table" id="nc-table-id">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Data</th>
+                                    <th>Filial</th>
+                                    <th>Tipo</th>
+                                    <th>Setor</th>
+                                    <th>Origem</th>
+                                    <th>Identificação</th>
+                                    <th>Cliente</th>
+                                    <th>Responsável</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="nc-table-body">
+                                <tr><td colspan="11" class="text-center">Carregando dados...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
                 <section id="view-audit" class="spa-view">
 
 
@@ -3020,458 +3158,174 @@
     <!-- ==================== MODAL: CADASTRO / EDIÇÃO DE POP ==================== -->
 
 
-    <div id="pop-modal" class="modal-overlay">
-
-
+    
+    <!-- NC Modal -->
+        <div id="nc-modal" class="modal-overlay">
         <div class="modal-container">
-
-
-            <form id="pop-form" onsubmit="savePOP(event)">
-
-
-            <!-- ID invisível para controle de edição -->
-
-
-            <input type="hidden" id="form-pop-id">
-
-
-            
-
-
-            <div class="modal-header">
-
-
-                <h3 id="pop-modal-title"><i class="fa-solid fa-file-circle-plus"></i> Registrar Novo POP</h3>
-
-
-                <button type="button" class="btn-close-modal" onclick="closePOPModal()"><i class="fa-solid fa-xmark"></i></button>
-
-
-            </div>
-
-
-            
-
-
-            <div class="modal-body">
-
-
-                <div class="modal-form-grid">
-
-
-                    
-
-
-                    <!-- Código do POP -->
-
-
-                    <div class="form-group-modal">
-
-
-                        <label for="form-pop-codigo">Código do POP *</label>
-
-
-                        <input type="text" id="form-pop-codigo" placeholder="Ex: POP-LOG-001" required>
-
-
-                    </div>
-
-
-
-
-
-                    <!-- Título do POP -->
-
-
-                    <div class="form-group-modal">
-
-
-                        <label for="form-pop-titulo">Título do POP *</label>
-
-
-                        <input type="text" id="form-pop-titulo" placeholder="Ex: Procedimento de Higiene de Carga" required>
-
-
-                    </div>
-
-
-
-
-
-                    <!-- Filial -->
-
-
-                    <div class="form-group-modal">
-
-
-                        <label for="form-pop-filial">Filial Responsável *</label>
-
-
-                        <select id="form-pop-filial" required>
-                            <option value="" disabled selected>Selecione a Filial...</option>
-                            <option value="Matriz">Matriz</option>
-                            <option value="Camaçari">Camaçari</option>
-                            <option value="Funeas">Funeas</option>
-                            <option value="SJP Prefeitura">SJP Prefeitura</option>
-                            <option value="São Roque">São Roque</option>
-                            <option value="Juatuba">Juatuba</option>
-                            <option value="Sorocaba">Sorocaba</option>
-                            <option value="Governador Valadares">Governador Valadares</option>
-                            <option value="Contagem">Contagem</option>
-                        </select>
-
-
-                    </div>
-
-
-
-
-
-                    <!-- Tipo -->
-
-
-                    <div class="form-group-modal">
-
-
-                        <label for="form-pop-tipo">Tipo *</label>
-
-
-                        <select id="form-pop-tipo" required>
-
-
-                            <option value="" disabled selected>Selecione o Tipo...</option>
-
-
-                            <option value="POP">POP</option>
-
-
-                            <option value="ANEXO">ANEXO</option>
-
-
-                            <option value="MANUAL">MANUAL</option>
-
-
-                            <option value="FLUXO">FLUXO</option>
-
-
-                            <option value="MAPA">MAPA</option>
-
-
-                        </select>
-
-
-                    </div>
-
-
-
-
-
-                    <!-- Abrangência -->
-
-
-                    <div class="form-group-modal">
-
-
-                        <label for="form-pop-abrangencia">Abrangência *</label>
-
-
-                        <select id="form-pop-abrangencia" required>
-
-
-                            <option value="" disabled selected>Selecione a Abrangência...</option>
-
-
-                            <option value="Global">🌎 Global (Todas as operações)</option>
-
-
-                            <option value="Específico">📌 Específico (Particularidades locais)</option>
-
-
-                        </select>
-
-
-                    </div>
-
-
-
-
-
-                    <!-- Área -->
-
-
-                    <div class="form-group-modal">
-
-
-                        <label for="form-pop-area">Área Relacionada *</label>
-
-
-                        <select id="form-pop-area" required>
-
-
-                            <option value="" disabled selected>Selecione a Área...</option>
-
-
-                            <option value="ARMAZENAGEM">ARMAZENAGEM</option>
-
-
-                            <option value="CLIENTES">CLIENTES</option>
-
-
-                            <option value="COMERCIAL">COMERCIAL</option>
-
-
-                            <option value="COMPRAS">COMPRAS</option>
-
-
-                            <option value="CONFERÊNCIA">CONFERÊNCIA</option>
-
-
-                            <option value="DIRETORIA">DIRETORIA</option>
-
-
-                            <option value="EXPEDIÇÃO">EXPEDIÇÃO</option>
-
-
-                            <option value="FINANCEIRO">FINANCEIRO</option>
-
-
-                            <option value="INSTITUCIONAL">INSTITUCIONAL</option>
-
-
-                            <option value="INVENTÁRIO">INVENTÁRIO</option>
-
-
-                            <option value="LIMPEZA">LIMPEZA</option>
-
-
-                            <option value="MANUTENÇÃO">MANUTENÇÃO</option>
-
-
-                            <option value="OPERACIONAL - SUPORTE">OPERACIONAL - SUPORTE</option>
-
-
-                            <option value="PICKING">PICKING</option>
-
-
-                            <option value="PORTARIA">PORTARIA</option>
-
-
-                            <option value="RECEBIMENTO">RECEBIMENTO</option>
-
-
-                            <option value="RH">RH</option>
-
-
-                            <option value="SAC">SAC</option>
-
-
-                            <option value="SEG. DO TRABALHO">SEG. DO TRABALHO</option>
-
-
-                            <option value="SISTEMA DE GESTÃO INTEGRADO">SISTEMA DE GESTÃO INTEGRADO</option>
-
-
-                            <option value="TRANSPORTE">TRANSPORTE</option>
-
-
-                            <option value="SEGURANÃ‡A PATRIMONIAL">SEGURANÃ‡A PATRIMONIAL</option>
-
-
-                            <option value="CONTABILIDADE">CONTABILIDADE</option>
-
-
-                            <option value="OPERACIONAL - GESTÃO">OPERACIONAL - GESTÃO</option>
-
-
-                            <option value="EQUIPAMENTOS">EQUIPAMENTOS</option>
-
-
-                            <option value="TECNOLOGIA">TECNOLOGIA</option>
-
-
-                        </select>
-
-
-                    </div>
-
-
-
-
-
-                    <!-- Responsável -->
-
-
-                    <div class="form-group-modal">
-
-
-                        <label for="form-pop-responsavel">Responsável Técnico *</label>
-
-
-                        <select id="form-pop-responsavel" required>
-
-
-                            <option value="" disabled selected>Selecione o Responsável...</option>
-
-
-                            <option value="IARA">IARA</option>
-
-
-                            <option value="SCARLET">SCARLET</option>
-
-
-                            <option value="ANA">ANA</option>
-
-
-                            <option value="KATHERINE">KATHERINE</option>
-
-
-                            <option value="BRUNO">BRUNO</option>
-
-
-                            <option value="DANILI">DANILI</option>
-
-
-                            <option value="KRISTYANY">KRISTYANY</option>
-
-
-                        </select>
-
-
-                    </div>
-
-
-
-
-
-                    <!-- Status -->
-
-
-                    <div class="form-group-modal">
-
-
-                        <label for="form-pop-status">Status Regulatório *</label>
-
-
-                        <select id="form-pop-status" required>
-                            <option value="AGUARDANDO APROVAÇÃO">AGUARDANDO APROVAÇÃO</option>
-                            <option value="AGUARDANDO REVISÃO">AGUARDANDO REVISÃO</option>
-                            <option value="AGUARDANDO TREINAMENTO">AGUARDANDO TREINAMENTO</option>
-                            <option value="REVISADO">REVISADO</option>
-                            <option value="COPIA NÃO CONTROLADA">CÓPIA NÃO CONTROLADA</option>
-                            <option value="HOMOLOGADO">HOMOLOGADO</option>
-                            <option value="VENCIDO">VENCIDO</option>
-                        </select>
-
-
-                    </div>
-
-
-
-
-
-                    <!-- Data da Revisão -->
-
-
-                    <div class="form-group-modal">
-
-
-                        <label for="form-pop-data-revisao">Data da Revisão *</label>
-
-
-                        <input type="date" id="form-pop-data-revisao" required onchange="autoSuggestNextRevision()">
-
-
-                    </div>
-
-
-
-
-
-                    <!-- Próxima Revisão -->
-
-
-                    <div class="form-group-modal">
-
-
-                        <label for="form-pop-proxima-revisao">Próxima Revisão * (Calculado)</label>
-
-
-                        <input type="date" id="form-pop-proxima-revisao" required readonly style="background-color: var(--bg-main); cursor: not-allowed; opacity: 0.85;" title="Calculada automaticamente a cada 2 anos (24 meses) a partir da data de revisão">
-
-
-                    </div>
-
-
-
-
-
-                    <!-- Drag & Drop Upload de PDF/Word -->
-
-
-                    <div class="form-full-width form-group-modal">
-
-
-                        <label>Documento de Origem (PDF / Word / Excel) *</label>
-
-
-                        <div class="upload-drop-zone" id="upload-zone" onclick="triggerFileUpload()" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-
-
-                            <i class="fa-solid fa-cloud-arrow-up"></i>
-
-
-                            <span class="upload-text-main">Arraste ou clique para fazer upload do documento</span>
-
-
-                            <span class="upload-text-sub">Formatos aceitos: PDF, DOCX, XLSX, PPTX (Tamanho máx: 15MB)</span>
-
-
-                            <input type="file" id="form-pop-file" style="display: none;" accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,.ppt,.pptx" onchange="handleFileSelect(event)">
-
-
-                        </div>
-
-
-                        <div class="uploaded-file-details" id="uploaded-file-info" style="display: none;">
-
-
-                            <span><i class="fa-solid fa-file-pdf" id="uploaded-file-icon"></i> <strong id="uploaded-filename">pop_especificacao_logistica.pdf</strong> (<span id="uploaded-filesize">2.4 MB</span>)</span>
-
-
-                            <i class="fa-solid fa-trash-can trash" onclick="removeUploadedFile(event)" title="Remover Arquivo"></i>
-
-
-                        </div>
-
-
-                    </div>
-
-
-
-
-
-                    <!-- Observações -->
-
-
-                    <div class="form-full-width form-group-modal">
-
-
-                        <label for="form-pop-observacoes">Observações de Revisão / Justificativa</label>
-
-
-                        <textarea id="form-pop-observacoes" rows="3" placeholder="Insira detalhes sobre as alterações realizadas nesta revisão ou pendências críticas..."></textarea>
-
-
-                    </div>
-
-
-
-
-
+            <form id="nc-form" onsubmit="saveNc(event)">
+                <input type="hidden" id="form-nc-id">
+                
+                <div class="modal-header">
+                    <h3 id="nc-modal-title"><i class="fa-solid fa-triangle-exclamation"></i> Registrar Nova Não Conformidade</h3>
+                    <button type="button" class="btn-close-modal" onclick="closeNcModal()"><i class="fa-solid fa-xmark"></i></button>
                 </div>
-
-
-            </div>
+                
+                <div class="modal-body">
+                    <div class="modal-form-grid">
+                        <div class="form-group-modal">
+                            <label for="form-nc-codigo">Código da NC (Gerado Auto)</label>
+                            <input type="text" id="form-nc-codigo" placeholder="Deixe em branco para gerar auto, ou ex: MTZ 001/2026">
+                            <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 4px;">Deixe vazio para gerar automaticamente ou digite um código manual.</small>
+                        </div>
+                        <div class="form-group-modal">
+                            <label for="form-nc-data">Data da Ocorrência *</label>
+                            <input type="date" id="form-nc-data" required>
+                        </div>
+                        <div class="form-group-modal">
+                            <label for="form-nc-filial">Filial *</label>
+                            <select id="form-nc-filial" required onchange="previewNcCode()">
+                                <option value="" disabled selected>Selecione...</option>
+                                <option value="Matriz">Matriz</option>
+                                <option value="Camaçari">Camaçari</option>
+                                <option value="Funeas">Funeas</option>
+                                <option value="SJP Prefeitura">SJP Prefeitura</option>
+                                <option value="São Roque">São Roque</option>
+                                <option value="Juatuba">Juatuba</option>
+                                <option value="Sorocaba">Sorocaba</option>
+                                <option value="Governador Valadares">Governador Valadares</option>
+                                <option value="Contagem">Contagem</option>
+                                <option value="Patrimônio">Patrimônio</option>
+                                <option value="Tigre">Tigre</option>
+                            </select>
+                        </div>
+                        <div class="form-group-modal">
+                            <label for="form-nc-origem">Origem *</label>
+                            <select id="form-nc-origem" required>
+                                <option value="" disabled selected>Selecione...</option>
+                                <option value="Auditoria Interna">Auditoria Interna</option>
+                                <option value="Auditoria Externa">Auditoria Externa</option>
+                                <option value="Cliente">Cliente</option>
+                                <option value="Fornecedor">Fornecedor</option>
+                                <option value="Processo Interno">Processo Interno</option>
+                                <option value="Transporte">Transporte</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group-modal">
+                            <label for="form-nc-identificacao">Como foi Identificada? *</label>
+                            <select id="form-nc-identificacao" required>
+                                <option value="" disabled selected>Selecione...</option>
+                                <option value="E-mail">E-mail</option>
+                                <option value="Interno">Interno</option>
+                                <option value="Telefone">Telefone</option>
+                                <option value="WhatsApp">WhatsApp</option>
+                                <option value="Teams">Teams</option>
+                            </select>
+                        </div>
+                        <div class="form-group-modal">
+                            <label for="form-nc-tipo">Tipo de Registro *</label>
+                            <select id="form-nc-tipo" required>
+                                <option value="" disabled selected>Selecione...</option>
+                                <option value="Não Conformidade">Não Conformidade</option>
+                                <option value="Desvio de Qualidade">Desvio de Qualidade</option>
+                                <option value="CAPA">CAPA</option>
+                                <option value="Ocorrência Operacional">Ocorrência Operacional</option>
+                                <option value="Ação Corretiva">Ação Corretiva</option>
+                            </select>
+                        </div>
+                        <div class="form-group-modal">
+                            <label for="form-nc-setor">Setor de Origem *</label>
+                            <select id="form-nc-setor" required>
+                                <option value="" disabled selected>Selecione...</option>
+                                <option value="Armazenagem">Armazenagem</option>
+                                <option value="Etiquetagem">Etiquetagem</option>
+                                <option value="Expedição">Expedição</option>
+                                <option value="Infraestrutura">Infraestrutura</option>
+                                <option value="Inventário">Inventário</option>
+                                <option value="Qualidade">Qualidade</option>
+                                <option value="Recebimento">Recebimento</option>
+                                <option value="Separação">Separação</option>
+                            </select>
+                        </div>
+                        <div class="form-group-modal">
+                            <label for="form-nc-cliente">Cliente Associado *</label>
+                            <select id="form-nc-cliente" required>
+                                <option value="" disabled selected>Selecione o Cliente...</option>
+                                <option value="PREFEITURA SJP">Prefeitura SJP</option>
+                                <option value="FUNEAS">Funeas</option>
+                                <option value="PREFEITURA DE CAMAÇARI">Prefeitura de Camaçari</option>
+                                <option value="CEMIG">Cemig</option>
+                                <option value="GASMIG">Gasmig</option>
+                                <option value="TIGRE">Tigre</option>
+                                <option value="ALFAPARF">Alfaparf</option>
+                                <option value="GLOBO PHARMA">Globo Pharma</option>
+                                <option value="INSTITUTO BUTANTAN">Instituto Butantan</option>
+                                <option value="TRT">TRT</option>
+                                <option value="HYPOFARMA">Hypofarma</option>
+                                <option value="CARTEPILLA">Cartepilla</option>
+                                <option value="PREFEITURA DE BH">Prefeitura de BH</option>
+                            </select>
+                        </div>
+                        <div class="form-group-modal">
+                            <label for="form-nc-responsavel">Responsável pela NC *</label>
+                            <select id="form-nc-responsavel" required>
+                                <option value="" disabled selected>Selecione...</option>
+                                <option value="IARA">Iara</option>
+                                <option value="SCARLET">Scarlet</option>
+                                <option value="DANILI">Danili</option>
+                                <option value="FABIANA">Fabiana</option>
+                                <option value="GABRIELA">Gabriela</option>
+                                <option value="KRISTIANE">Kristiane</option>
+                                <option value="BRUNO">Bruno</option>
+                                <option value="ANA CAROLINE">Ana Caroline</option>
+                            </select>
+                        </div>
+                        <div class="form-group-modal">
+                            <label for="form-nc-status">Status *</label>
+                            <select id="form-nc-status" required>
+                                <option value="Aberta">Aberta</option>
+                                <option value="Em Tratamento">Em Tratamento</option>
+                                <option value="Fechada">Fechada</option>
+                                <option value="Cancelada">Cancelada</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group-modal" style="margin-top: 15px;">
+                        <label for="form-nc-descricao">Descrição da Não Conformidade *</label>
+                        <textarea id="form-nc-descricao" rows="4" required placeholder="Descreva o problema de forma clara e objetiva..."></textarea>
+                    </div>
+                </div>
+                
+                <!-- Upload de Anexo NC -->
+                <div class="form-group-modal" style="margin-top: 15px; padding: 0 20px;">
+                    <label>Anexo da Não Conformidade (opcional)</label>
+                    <div class="file-upload-container" id="nc-upload-zone" onclick="document.getElementById('form-nc-file').click()" ondragover="handleNcDragOver(event)" ondragenter="handleNcDragEnter(event)" ondragleave="handleNcDragLeave(event)" ondrop="handleNcDrop(event)" style="border: 2px dashed var(--border-color); border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; background: var(--bg-main); transition: all 0.2s;">
+                        <div class="upload-icon" style="font-size: 2rem; color: var(--primary); margin-bottom: 10px;"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                        <p class="upload-title" style="margin: 0; font-weight: 600; color: var(--text-primary);">Clique ou arraste um arquivo para anexar</p>
+                        <p class="upload-subtitle" style="margin: 5px 0 0 0; font-size: 0.8rem; color: var(--text-secondary);">PDF, DOCX, XLSX, PPTX, JPG, PNG (Máx. 15MB)</p>
+                    </div>
+                    <input type="file" id="form-nc-file" style="display: none;" onchange="handleNcFileSelect(event)" accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,.ppt,.pptx,.jpg,.jpeg,.png">
+                    
+                    <!-- File Uploaded State -->
+                    <div class="uploaded-file-card" id="nc-uploaded-file-info" style="display: none; align-items: center; justify-content: space-between; padding: 12px 16px; background: white; border: 1px solid var(--success-color); border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div class="file-icon" style="font-size: 1.5rem;"><i class="fa-solid fa-file-lines text-secondary" id="nc-uploaded-file-icon"></i></div>
+                            <div class="file-details" style="text-align: left;">
+                                <div class="file-name" id="nc-uploaded-filename" style="font-weight: 600; color: var(--text-primary); font-size: 0.9rem;">documento.pdf</div>
+                                <div class="file-meta" style="font-size: 0.75rem; color: var(--text-secondary);"><span id="nc-uploaded-filesize">2.5 MB</span> • <span class="status-ready" style="color: var(--success-color); font-weight: 600;"><i class="fa-solid fa-check"></i> Pronto</span></div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-remove-file" onclick="removeNcUploadedFile(event)" title="Remover anexo" style="background: none; border: none; color: var(--danger-color); cursor: pointer; font-size: 1.1rem; padding: 4px;"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-outline" onclick="closeNcModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary" id="btn-save-nc">Salvar NC</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
 
             
@@ -4526,7 +4380,7 @@
 
     <script src="firebase-config.js"></script>
 
-    <script src="app_v3.js?v=1782918850"></script>
+    <script src="app_v3.js?v=1783541220"></script>
 
 
     <!-- JS Autenticacao e Gestao de Usuarios -->
