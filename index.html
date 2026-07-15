@@ -1797,7 +1797,7 @@ window.addEventListener('unhandledrejection', function(event) {
             <button onclick="abrirModalEmpilhadeira()" style="padding: 8px 16px; background: #0B1D32; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-plus"></i> Adicionar Empilhadeira</button>
         </div>
         
-        <div id="empilhadeiras-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">
+        <div id="empilhadeiras-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px;">
             <!-- Cards de empilhadeira preenchidos via JS -->
             <div style="grid-column: 1 / -1; text-align: center; color: #94a3b8; font-size: 13px; padding: 20px; font-style: italic;">Nenhuma empilhadeira cadastrada.</div>
         </div>
@@ -12071,7 +12071,7 @@ function renderizarEmpilhadeiras() {
             </div>
             
             <!-- Gráfico Anual -->
-            <div style="height: 170px; width: 100%; margin-bottom: 15px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 15px;">
+            <div style="height: 230px; width: 100%; margin-bottom: 15px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 15px;">
                 <canvas id="${canvasId}"></canvas>
             </div>
             
@@ -12135,6 +12135,7 @@ function renderizarEmpilhadeiras() {
                             datalabels: {
                                 align: 'top',
                                 anchor: 'end',
+                                offset: 4,
                                 formatter: function(value) { return value > 0 ? value + '%' : ''; },
                                 color: '#ffab00',
                                 font: { weight: '800', size: 9 }
@@ -12154,7 +12155,7 @@ function renderizarEmpilhadeiras() {
                                 anchor: 'center',
                                 color: '#fff',
                                 formatter: function(value) { return value > 0 ? value : ''; },
-                                font: { weight: '900', size: 11 }
+                                font: { weight: '900', size: 10 }
                             }
                         }
                     ]
@@ -12163,13 +12164,13 @@ function renderizarEmpilhadeiras() {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    layout: { padding: { top: 15 } },
+                    layout: { padding: { top: 25, bottom: 5 } },
                     scales: {
                         x: { grid: { display: false }, ticks: { font: { size: 9 } } },
                         y: {
                             type: 'linear',
                             display: false, // Esconde números e grid do eixo Y principal
-                            suggestedMax: Math.max(...horasData) * 1.2
+                            suggestedMax: Math.max(...horasData) * 1.35
                         },
                         y1: {
                             type: 'linear',
