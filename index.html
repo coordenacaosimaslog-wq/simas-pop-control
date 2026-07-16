@@ -7719,7 +7719,7 @@ function salvarAgua() {
     
     oprHistoryDB[idx].data.aguaEmpilhadeiras[sAno][sMes] = [w1, w2, w3, w4, w5];
     
-        localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+        saveToFirebase('simas_opr_history', oprHistoryDB);
     renderizarGraficoAgua();
     fecharModalAgua();
     if (typeof showToast === 'function') showToast('Consumo de água salvo!', 'success');
@@ -9547,6 +9547,12 @@ if (typeof window.oprNavHooked === "undefined") {
 
 // ==================== 16. HISTÓRICO DO ONE PAGE REPORT ====================
 
+// Firebase Setters
+window.setOprHistoryDB = function(data) { oprHistoryDB = data; renderOprHistoryList(); renderizarMelhorias(); };
+window.setOprBranches = function(data) { OPR_BRANCHES = data; };
+window.setTopProblemasDB = function(data) { topProblemasDB = data; renderizarTopProblemas(); };
+window.setTreinamentosExtrasDB = function(data) { treinamentosExtrasDB = data; renderTreinamentosExtras(); };
+window.saveToFirebase = function() { console.warn('Firebase module not loaded yet'); };
 let oprHistoryDB = JSON.parse(localStorage.getItem('simas_opr_history')) || [];
 let currentOprBranch = null;
 let currentOprRecordId = null;
@@ -9869,7 +9875,7 @@ function createNewOpr() {
     }
 
     oprHistoryDB.push(newRecord);
-        localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+        saveToFirebase('simas_opr_history', oprHistoryDB);
     
     openOprForm(id);
 }
@@ -9878,7 +9884,7 @@ function createNewOpr() {
 function deleteOpr(id) {
     if(confirm("Tem certeza que deseja apagar este One Page Report? Esta ação não pode ser desfeita.")) {
         oprHistoryDB = oprHistoryDB.filter(r => r.id !== id);
-        localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+        saveToFirebase('simas_opr_history', oprHistoryDB);
         renderOprHistoryList();
         if(typeof showToast === 'function') showToast('One Page apagado com sucesso!', 'success');
     }
@@ -9911,7 +9917,7 @@ function duplicateOpr(id) {
     }
     
     oprHistoryDB.push(duplicate);
-        localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+        saveToFirebase('simas_opr_history', oprHistoryDB);
     renderOprHistoryList();
     if(typeof showToast === 'function') showToast('Relatório duplicado com sucesso!', 'success');
 }
@@ -10284,7 +10290,7 @@ function saveCurrentOpr() {
         oprHistoryDB[idx].data.topProblemasSnapshot = JSON.parse(JSON.stringify(dbProbs.slice(0, 3)));
 
 
-        localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+        saveToFirebase('simas_opr_history', oprHistoryDB);
         if(typeof showToast === 'function') showToast('Relatório salvo e concluído com sucesso!', 'success');
         
         cancelOprEdit();
@@ -10306,7 +10312,7 @@ function updateBranchManager(branchName, newName) {
     const branch = OPR_BRANCHES.find(b => b.name === branchName);
     if (branch) {
         branch.resp = newName;
-        localStorage.setItem('simas_opr_branches', JSON.stringify(OPR_BRANCHES));
+        saveToFirebase('simas_opr_branches', OPR_BRANCHES);
     }
 }
 </script>
@@ -10917,7 +10923,7 @@ function salvarLote5S() {
     }
     
     if (notasAdicionadas > 0 || rows.length > 0) {
-        localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+        saveToFirebase('simas_opr_history', oprHistoryDB);
         renderizar5S();
         fecharModal5S();
         saveCurrentOpr(); // Salva estado atual
@@ -10932,7 +10938,7 @@ function excluirAvaliacao5S(id) {
         let avaliacoes = oprHistoryDB[idx].data.cincoSData;
         oprHistoryDB[idx].data.cincoSData = avaliacoes.filter(a => a.id !== id);
 
-        localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+        saveToFirebase('simas_opr_history', oprHistoryDB);
         renderizar5S();
         saveCurrentOpr();
     }
@@ -11143,7 +11149,7 @@ async function salvarLUP() {
                 });
             }
             
-            localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+            saveToFirebase('simas_opr_history', oprHistoryDB);
             renderizarLUP();
             saveCurrentOpr(); // Salva estado atual
             fecharModalLUP();
@@ -11168,7 +11174,7 @@ function excluirLUP(id, urlAntes, urlDepois) {
         let lups = oprHistoryDB[idx].data.lupData;
         oprHistoryDB[idx].data.lupData = lups.filter(a => a.id !== id);
         
-        localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+        saveToFirebase('simas_opr_history', oprHistoryDB);
         renderizarLUP();
         saveCurrentOpr();
         
@@ -11495,7 +11501,7 @@ function salvarTopProblema() {
         topProblemasDB.push(probObj);
     }
     
-    localStorage.setItem('simas_top_problemas', JSON.stringify(topProblemasDB));
+    saveToFirebase('simas_top_problemas', topProblemasDB);
     fecharModalTopProblema();
     renderizarTopProblemas();
     if (typeof showToast === 'function') showToast('Problema salvo com sucesso!', 'success');
@@ -11504,7 +11510,7 @@ function salvarTopProblema() {
 function excluirTopProblema(id) {
     if (confirm('Tem certeza que deseja excluir permanentemente este registro incorreto? Os problemas concluídos devem permanecer cadastrados no sistema e não devem ser excluídos.')) {
         topProblemasDB = topProblemasDB.filter(p => p.id !== id);
-        localStorage.setItem('simas_top_problemas', JSON.stringify(topProblemasDB));
+        saveToFirebase('simas_top_problemas', topProblemasDB);
         renderizarTopProblemas();
         if (typeof showToast === 'function') showToast('Registro excluído!', 'success');
     }
@@ -11668,7 +11674,7 @@ function salvarAcidente() {
             obs: obsVal
         });
 
-        localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+        saveToFirebase('simas_opr_history', oprHistoryDB);
         calcularDiasSemAcidente();
         fecharModalAcidente();
         if(typeof renderizarCruz === 'function') renderizarCruz();
@@ -11888,7 +11894,7 @@ function alternarEstadoCruz(dateStr, currentStatus) {
         return;
     }
 
-        localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+        saveToFirebase('simas_opr_history', oprHistoryDB);
     renderizarCruz();
     calcularDiasSemAcidente();
 }
@@ -11967,7 +11973,7 @@ function salvarPiramide() {
     if (!record.data.piramide) record.data.piramide = {};
     record.data.piramide[ano] = newData;
 
-        localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+        saveToFirebase('simas_opr_history', oprHistoryDB);
     if(typeof showToast === 'function') showToast('Pirâmide salva!', 'success');
 }
 
@@ -12362,7 +12368,7 @@ function salvarEmpilhadeira() {
         oprHistoryDB[idx].data.empilhadeiras[empIndex] = newEmp;
     }
     
-        localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+        saveToFirebase('simas_opr_history', oprHistoryDB);
     renderizarEmpilhadeiras();
     fecharModalEmpilhadeira();
     if (typeof showToast === 'function') showToast('Empilhadeira salva com sucesso!', 'success');
@@ -12373,7 +12379,7 @@ function excluirEmpilhadeira(index) {
         const idx = oprHistoryDB.findIndex(r => r.id === currentOprRecordId);
         if (idx !== -1) {
             oprHistoryDB[idx].data.empilhadeiras.splice(index, 1);
-        localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+        saveToFirebase('simas_opr_history', oprHistoryDB);
             renderizarEmpilhadeiras();
             if (typeof showToast === 'function') showToast('Removida com sucesso!', 'success');
         }
@@ -12453,7 +12459,7 @@ function salvarPiramide() {
         }
     });
 
-        localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+        saveToFirebase('simas_opr_history', oprHistoryDB);
     if(typeof showToast === 'function') showToast('Pirâmide salva!', 'success');
 }
 
@@ -12689,7 +12695,7 @@ loadTreinamentosExtras();
 
 function saveTreinamentosExtrasDB() {
     try {
-        localStorage.setItem('simas_treinamentos_extras', JSON.stringify(treinamentosExtrasDB));
+        saveToFirebase('simas_treinamentos_extras', treinamentosExtrasDB);
     } catch (e) {
         console.error("Erro ao salvar treinamentos extras:", e);
     }
@@ -13446,7 +13452,7 @@ async function salvarMelhoria() {
                 });
             }
             
-            localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+            saveToFirebase('simas_opr_history', oprHistoryDB);
             renderizarMelhorias();
             saveCurrentOpr();
             
@@ -13482,7 +13488,7 @@ function excluirMelhoria(id, urlAntes, urlDepois) {
         let items = oprHistoryDB[idx].data.melhoriasData;
         oprHistoryDB[idx].data.melhoriasData = items.filter(a => a.id !== id);
         
-        localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+        saveToFirebase('simas_opr_history', oprHistoryDB);
         renderizarMelhorias();
         saveCurrentOpr();
         
@@ -13792,7 +13798,7 @@ function salvarLicencaInline(id, btn) {
         });
     }
     
-    localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+    saveToFirebase('simas_opr_history', oprHistoryDB);
     // CORRIGIDO: Nao chama saveCurrentOpr(), pois isso finaliza o relatorio (muda o status para Concluido)
     renderizarLicencas();
 }
@@ -13804,7 +13810,7 @@ function excluirLicencaInline(id) {
         
         oprHistoryDB[idx].data.licencasData = oprHistoryDB[idx].data.licencasData.filter(l => l.id !== id);
         
-        localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+        saveToFirebase('simas_opr_history', oprHistoryDB);
         saveCurrentOpr();
         renderizarLicencas();
     }
@@ -13817,7 +13823,7 @@ function revertToRascunho() {
         if (idx !== -1) {
             oprHistoryDB[idx].status = 'Rascunho';
             oprHistoryDB[idx].updatedAt = new Date().toISOString();
-            localStorage.setItem('simas_opr_history', JSON.stringify(oprHistoryDB));
+            saveToFirebase('simas_opr_history', oprHistoryDB);
             if(typeof showToast === 'function') showToast('Relatório revertido para Rascunho!', 'success');
             renderOprHistoryList();
             openOprForm(currentOprRecordId);
@@ -13825,5 +13831,8 @@ function revertToRascunho() {
     }
 }
 </script>
+    <script type="module" src="firebase-sync.js"></script>
 </body>
 </html>
+
+
