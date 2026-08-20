@@ -923,7 +923,7 @@ a { text-decoration: none; color: inherit; }
    CORPO DA APLICAÃ‡ÃƒO
    ============================================================ */
 .content-body {
-    padding: 1.75rem 2rem;
+    padding: 0 2rem 1.75rem 2rem;
     flex: 1;
 }
 
@@ -1561,493 +1561,978 @@ input[type="date"]:focus, textarea:focus {
     color: #334155;
     border: 1px solid #E2E8F0;
     padding: 4px 8px;
+
     border-radius: 6px;
+
     font-family: 'Consolas', 'Courier New', monospace;
+
     font-size: 13px;
+
     font-weight: 500;
+
     white-space: nowrap;
-}
     border: 1px solid transparent;
 }
 
+
+
 .tipo-badge.pop      { background: #F8F4FF; color: #5B21B6; border-color: #DDD6FE; }
+
 .tipo-badge.anexo    { background: #F1F5F9; color: #334155; border-color: #CBD5E1; }
+
 .tipo-badge.manual   { background: #FFF7ED; color: #92400E; border-color: #FDE68A; }
+
 .tipo-badge.fluxo    { background: #F0FEFF; color: #0E7490; border-color: #A5F3FC; }
+
 .tipo-badge.mapa     { background: #F0FDF4; color: #15803D; border-color: #BBF7D0; }
 
+
+
 /* ============================================================
+
    MODAL DE CADASTRO / EDIÃ‡ÃƒO DE POP
+
    ============================================================ */
+
 .modal-overlay {
+
     position: fixed;
+
     inset: 0;
+
     background-color: rgba(15, 12, 12, 0.6);
+
     backdrop-filter: blur(3px);
+
     z-index: 1000;
+
     display: none;
+
     align-items: flex-start;
+
     justify-content: center;
+
     padding: 2rem 1rem;
+
     overflow-y: auto;
+
 }
+
+
 
 .modal-overlay.active {
+
     display: flex;
+
     animation: fadeIn 0.25s ease;
+
 }
+
+
 
 .modal-container {
+
     background-color: var(--bg-card);
+
     border-radius: var(--radius-xl);
+
     width: 100%;
+
     max-width: 780px;
+
     box-shadow: var(--shadow-xl);
+
     display: flex;
+
     flex-direction: column;
+
     max-height: calc(100vh - 4rem);
+
     border: 1px solid var(--border-color);
+
     margin: auto;
+
     overflow: hidden;
+
 }
+
+
 
 .modal-container form {
+
     display: flex;
+
     flex-direction: column;
+
     height: 100%;
+
     max-height: 100%;
+
     overflow: hidden;
+
 }
+
+
 
 .modal-header {
+
     display: flex;
+
     align-items: center;
+
     justify-content: space-between;
+
     padding: 1.25rem 1.5rem;
+
     border-bottom: 1px solid var(--border-color);
+
     background-color: var(--graphite-900);
+
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+
     flex-shrink: 0;
+
 }
 
+
+
 .modal-header h3 {
+
     font-family: 'Montserrat', sans-serif;
+
     font-size: 1rem;
+
     font-weight: 700;
+
     color: white;
+
     display: flex;
+
     align-items: center;
+
     gap: 10px;
+
     letter-spacing: 0.2px;
+
 }
+
+
 
 .modal-header h3 i { color: var(--brand); }
 
+
+
 .modal-body {
+
     padding: 1.75rem;
+
     overflow-y: auto;
+
     flex: 1;
+
 }
+
+
 
 .modal-footer {
+
     padding: 1rem 1.5rem;
+
     border-top: 1px solid var(--border-color);
+
     display: flex;
+
     justify-content: flex-end;
+
     gap: 10px;
+
     background: var(--bg-hover);
+
     border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+
     flex-shrink: 0;
+
 }
 
+
+
 .modal-form-grid {
+
     display: grid;
+
     grid-template-columns: repeat(2, 1fr);
+
     gap: 1.2rem;
+
 }
+
+
 
 .form-full-width { grid-column: 1 / -1; }
 
+
+
 .form-group-modal { display: flex; flex-direction: column; gap: 5px; }
 
+
+
 .form-group-modal label {
+
     font-size: 0.7rem;
+
     font-weight: 700;
+
     color: var(--text-secondary);
+
     text-transform: uppercase;
+
     letter-spacing: 0.8px;
+
 }
+
+
 
 .form-group-modal input,
+
 .form-group-modal select,
+
 .form-group-modal textarea {
+
     border: 1px solid var(--graphite-100);
+
     border-radius: var(--radius-md);
+
     padding: 9px 12px;
+
     font-size: 0.875rem;
+
     color: var(--text-primary);
+
     background-color: var(--bg-main);
+
     transition: var(--transition);
+
     width: 100%;
+
     font-family: 'Inter', sans-serif;
+
 }
+
+
 
 .form-group-modal input:focus,
+
 .form-group-modal select:focus,
+
 .form-group-modal textarea:focus {
+
     border-color: var(--brand);
+
     background-color: white;
+
     box-shadow: 0 0 0 3px rgba(163, 13, 0, 0.09);
+
     outline: none;
+
 }
+
+
 
 .form-group-modal textarea {
+
     resize: vertical;
+
     min-height: 80px;
+
     line-height: 1.5;
+
 }
+
+
 
 /* Upload Zone */
+
 .upload-drop-zone {
+
     border: 2px dashed var(--border-color);
+
     border-radius: var(--radius-lg);
+
     padding: 2rem;
+
     display: flex;
+
     flex-direction: column;
+
     align-items: center;
+
     gap: 8px;
+
     cursor: pointer;
+
     transition: var(--transition);
+
     text-align: center;
+
     background-color: var(--bg-main);
+
 }
+
+
 
 .upload-drop-zone:hover {
+
     border-color: var(--brand);
+
     background-color: var(--brand-light);
+
 }
+
+
 
 .upload-drop-zone.drag-over {
+
     border-color: var(--brand);
+
     background-color: var(--brand-light);
+
 }
+
+
 
 .upload-drop-zone * { pointer-events: none; }`n.upload-drop-zone i {
+
     font-size: 2rem;
+
     color: var(--brand);
+
 }
+
+
 
 .upload-text-main {
+
     font-weight: 600;
+
     font-size: 0.9rem;
+
     color: var(--text-primary);
+
 }
+
+
 
 .upload-text-sub {
+
     font-size: 0.78rem;
+
     color: var(--text-secondary);
+
 }
+
+
 
 .uploaded-file-details {
+
     display: flex;
+
     align-items: center;
+
     justify-content: space-between;
+
     padding: 10px 14px;
+
     background-color: var(--bg-hover);
+
     border: 1px solid var(--border-color);
+
     border-radius: var(--radius-md);
+
     font-size: 0.82rem;
+
 }
 
+
+
 .uploaded-file-details .trash {
+
     color: var(--brand);
+
     cursor: pointer;
+
     transition: var(--transition);
+
     font-size: 1rem;
+
 }
+
+
 
 .uploaded-file-details .trash:hover { color: var(--brand-dark); }
 
+
+
 /* ============================================================
+
    MODAL DE DETALHES
+
    ============================================================ */
+
 .details-info-grid {
+
     display: grid;
+
     grid-template-columns: repeat(2, 1fr);
+
     gap: 1rem;
+
     font-size: 0.85rem;
+
 }
+
+
 
 /* Timeline de RevisÃµes */
+
 .review-timeline {
+
     position: relative;
+
     padding-left: 24px;
+
 }
+
+
 
 .review-timeline::before {
+
     content: '';
+
     position: absolute;
+
     left: 7px; top: 0; bottom: 0;
+
     width: 2px;
+
     background: var(--border-color);
+
 }
+
+
 
 .timeline-item {
+
     position: relative;
+
     margin-bottom: 1.2rem;
+
 }
+
+
 
 .timeline-marker {
+
     position: absolute;
+
     left: -21px;
+
     top: 4px;
+
     width: 10px; height: 10px;
+
     border-radius: 50%;
+
     background-color: var(--graphite-200);
+
     border: 2px solid white;
+
     box-shadow: 0 0 0 1px var(--graphite-200);
+
 }
+
+
 
 .timeline-item.latest .timeline-marker {
+
     background-color: var(--brand);
+
     box-shadow: 0 0 0 2px rgba(163, 13, 0,0.2);
+
 }
+
+
 
 .timeline-content {
+
     background: var(--bg-hover);
+
     border: 1px solid var(--border-color);
+
     border-radius: var(--radius-md);
+
     padding: 10px 14px;
+
 }
+
+
 
 .timeline-item.latest .timeline-content {
+
     border-color: rgba(163, 13, 0, 0.25);
+
     background-color: var(--brand-light);
+
 }
+
+
 
 .timeline-date-author {
+
     display: flex;
+
     gap: 14px;
+
     font-size: 0.75rem;
+
     color: var(--text-secondary);
+
     margin-bottom: 5px;
+
     flex-wrap: wrap;
+
 }
+
+
 
 .timeline-date-author span {
+
     display: flex;
+
     align-items: center;
+
     gap: 5px;
+
 }
+
+
 
 .timeline-desc {
+
     font-size: 0.82rem;
+
     color: var(--text-primary);
+
     font-weight: 500;
+
     line-height: 1.45;
+
 }
+
+
 
 /* ============================================================
+
    INTEGRATIONS â€” MICROSOFT 365 CARDS
+
    ============================================================ */
+
 .integrations-grid {
+
     display: grid;
+
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+
     gap: 1.2rem;
+
 }
+
+
 
 .integration-card {
+
     background-color: var(--bg-card);
+
     border: 1px solid var(--border-color);
+
     border-radius: var(--radius-lg);
+
     padding: 1.4rem;
+
     transition: var(--transition);
+
     box-shadow: var(--shadow-sm);
+
 }
+
+
 
 .integration-card:hover {
+
     transform: translateY(-2px);
+
     box-shadow: var(--shadow-md);
+
     border-color: var(--graphite-200);
+
 }
+
+
 
 .integration-card-header {
+
     display: flex;
+
     align-items: center;
+
     gap: 14px;
+
     margin-bottom: 1rem;
+
 }
+
+
 
 .integration-logo-mock {
+
     width: 44px; height: 44px;
+
     border-radius: 10px;
+
     display: flex;
+
     align-items: center;
+
     justify-content: center;
+
     font-size: 1.2rem;
+
     flex-shrink: 0;
+
 }
+
+
 
 .integration-logo-mock.sharepoint  { background: #E9F2FE; color: #0078D4; }
+
 .integration-logo-mock.planner     { background: #FFF0F0; color: #EA3D2F; }
+
 .integration-logo-mock.powerbi     { background: #FFF4E0; color: #F2C811; }
+
 .integration-logo-mock.excel       { background: #EDFAED; color: #217346; }
+
 .integration-logo-mock.forms       { background: #F3E8FF; color: #7248C7; }
 
+
+
 .integration-title-sub h4 {
+
     font-family: 'Montserrat', sans-serif;
+
     font-size: 0.9rem;
+
     font-weight: 700;
+
     color: var(--graphite-900);
+
 }
+
+
 
 .integration-title-sub span {
+
     font-size: 0.75rem;
+
     color: var(--text-secondary);
+
 }
+
+
 
 .integration-desc {
+
     font-size: 0.8rem;
+
     color: var(--text-secondary);
+
     line-height: 1.55;
+
     margin-bottom: 1rem;
+
 }
+
+
 
 .integration-footer {
+
     display: flex;
+
     align-items: center;
+
     justify-content: space-between;
+
     padding-top: 0.85rem;
+
     border-top: 1px solid var(--border-color);
+
 }
 
+
+
 .integration-status-text {
+
     font-size: 0.75rem;
+
     font-weight: 700;
+
     display: flex;
+
     align-items: center;
+
     gap: 6px;
+
     font-family: 'Montserrat', sans-serif;
+
 }
+
+
 
 .integration-status-text i { font-size: 0.55rem; }
 
+
+
 .integration-status-text.connected   { color: var(--success); }
+
 .integration-status-text.disconnected { color: var(--graphite-400); }
 
+
+
 /* ============================================================
+
    AUDIT TRAIL â€” LOGS
+
    ============================================================ */
+
 .logs-header-bar {
+
     display: flex;
+
     justify-content: space-between;
+
     align-items: center;
+
     margin-bottom: 0.5rem;
+
 }
+
+
 
 .logs-header-bar h3 {
+
     font-family: 'Montserrat', sans-serif;
+
     font-size: 0.9rem;
+
     font-weight: 700;
+
     color: var(--graphite-900);
+
     display: flex;
+
     align-items: center;
+
     gap: 8px;
+
 }
+
+
 
 .audit-table-container {
+
     background: var(--bg-card);
+
     border: 1px solid var(--border-color);
+
     border-radius: var(--radius-lg);
+
     overflow: hidden;
+
     box-shadow: var(--shadow-sm);
+
 }
+
+
 
 /* Badge de AÃ§Ã£o no Log */
+
 .log-action-badge {
+
     display: inline-flex;
+
     align-items: center;
+
     padding: 3px 8px;
+
     border-radius: 4px;
+
     font-size: 0.68rem;
+
     font-weight: 700;
+
     text-transform: uppercase;
+
     letter-spacing: 0.5px;
+
     font-family: 'Montserrat', sans-serif;
+
 }
 
+
+
 /* ============================================================
+
    URGÃŠNCIAS NO DASHBOARD
+
    ============================================================ */
+
 #urgent-pops-list .metric-icon.danger {
+
     background-color: var(--brand-light);
+
     color: var(--brand-dark);
+
 }
+
+
 
 #urgent-pops-list .metric-icon.warning {
+
     background-color: var(--warning-light);
+
     color: var(--warning-dark);
+
 }
 
+
+
 /* ============================================================
+
    TOAST NOTIFICATIONS
+
    ============================================================ */
+
 .toast-container {
+
     position: fixed;
+
     bottom: 1.5rem;
+
     right: 1.5rem;
+
     display: flex;
+
     flex-direction: column;
+
     gap: 10px;
+
     z-index: 99999;
+
     pointer-events: none;
+
 }
+
+
 
 .toast {
+
     background-color: var(--graphite-900);
+
     color: white;
+
     padding: 13px 18px;
+
     border-radius: var(--radius-md);
+
     font-size: 0.845rem;
+
     box-shadow: var(--shadow-xl);
+
     display: flex;
+
     align-items: center;
+
     gap: 10px;
+
     min-width: 260px;
+
     max-width: 400px;
+
     pointer-events: all;
+
     animation: slideUp 0.3s ease, fadeOut 0.4s ease 3.5s forwards;
+
     border-left: 4px solid var(--graphite-500);
+
     font-weight: 500;
+
 }
+
+
 
 .toast.success { border-color: var(--success); }
+
 .toast.success i { color: var(--success); }
 
+
+
 .toast.error { border-color: var(--brand); }
+
 .toast.error i { color: var(--brand); }
 
+
+
 .toast.info { border-color: var(--info); }
+
 .toast.info i { color: var(--info); }
 
+
+
 .toast.warning { border-color: var(--warning); }
+
 .toast.warning i { color: var(--warning); }
 
+
+
 /* ============================================================
+
    PAINEL DE NOTIFICAÃ‡Ã•ES
+
    ============================================================ */
+
 #notifications-panel {
+
     border-radius: var(--radius-lg) !important;
+
     border: 1px solid var(--border-color) !important;
+
     box-shadow: var(--shadow-xl) !important;
+
     background-color: white !important;
-/* ============================================================
-   ANIMAÃ‡Ã•ES
-   ============================================================ */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ============================================================
+
+   ANIMAÃ‡Ã•ES
+
+   ============================================================ */
+
+@keyframes fadeIn {
+
+    from { opacity: 0; transform: translateY(8px); }
+
+    to   { opacity: 1; transform: translateY(0); }
+
+}
+
 
 @keyframes slideDown {
     from { opacity: 0; transform: translateY(-10px); }
@@ -2549,4 +3034,49 @@ input[type="date"]:focus, textarea:focus {
     padding: 3px 8px;
     font-size: 0.72rem;
     font-weight: 600;
+}
+
+
+/* ==================================================== */
+/* AJUSTE VISUAL CIRÚRGICO - PADRONIZAÇÃO DE MÓDULOS OPR */
+/* ==================================================== */
+
+/* Container Principal do One Page */
+#opr-main-content {
+    /* Para garantir que não haja vazamentos laterais */
+    overflow-x: hidden;
+    padding-bottom: 40px; 
+}
+
+/* Padronização de todos os cards/seções principais diretos */
+#opr-main-content > div:not(.modal-overlay):not([id^="modal"]):not([style*="height: 25px"]) {
+    /* 1. SEPARAÇÃO VERTICAL UNIFORME (24px) */
+    margin-top: 0 !important;
+    margin-bottom: 24px !important;
+    
+    /* 2. LARGURA E ALINHAMENTO */
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    
+    /* 3. PADRÃO VISUAL DO CONTAINER */
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important;
+    
+    /* 4. PADRÃO DE PREENCHIMENTO INTERNO */
+    padding: 24px !important;
+    
+    /* 5. PREVENIR PROBLEMAS DE ALTURA FIXA (Altura Automática) */
+    height: auto !important;
+    min-height: unset !important;
+}
+
+/* 6. OCULTAR ESPAÇADORES MANUAIS ANTIGOS */
+#opr-main-content > div[style*="height: 25px"] {
+    display: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }

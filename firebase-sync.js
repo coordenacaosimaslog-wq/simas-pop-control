@@ -1,74 +1,67 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+// Script para sincronizar dados com o Firebase Firestore (Compat Mode)
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDCv2C8bBB1Dnmn67HLdEiIHuSLK5i_bLc",
-  authDomain: "simas-pop-control.firebaseapp.com",
-  projectId: "simas-pop-control",
-  storageBucket: "simas-pop-control.firebasestorage.app",
-  messagingSenderId: "843930571694",
-  appId: "1:843930571694:web:ca0c2d83b0aeca8f6b6e3f"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// State mirrors to calculate diffs and avoid rewriting identical data
 let localOprHistoryState = [];
 let localTopProblemasState = [];
 
-// --- Listeners (Leitura em Tempo Real) ---
+if (window.db) {
+    // --- Listeners (Leitura em Tempo Real) ---
+    window.db.collection('opr_history').onSnapshot((snapshot) => {
+        localOprHistoryState = snapshot.docs.map(doc => doc.data());
+        if (window.setOprHistoryDB) {
+            window.setOprHistoryDB(JSON.parse(JSON.stringify(localOprHistoryState)));
+        }
+    });
 
-onSnapshot(collection(db, 'opr_history'), (snapshot) => {
-    localOprHistoryState = snapshot.docs.map(doc => doc.data());
-    if (window.setOprHistoryDB) {
-        window.setOprHistoryDB(JSON.parse(JSON.stringify(localOprHistoryState)));
-    }
-});
+    window.db.collection('top_problemas').onSnapshot((snapshot) => {
+        localTopProblemasState = snapshot.docs.map(doc => doc.data());
+        if (window.setTopProblemasDB) {
+            window.setTopProblemasDB(JSON.parse(JSON.stringify(localTopProblemasState)));
+        }
+    });
 
-onSnapshot(collection(db, 'top_problemas'), (snapshot) => {
-    localTopProblemasState = snapshot.docs.map(doc => doc.data());
-    if (window.setTopProblemasDB) {
-        window.setTopProblemasDB(JSON.parse(JSON.stringify(localTopProblemasState)));
-    }
-});
+    window.db.collection('config').doc('opr_branches').onSnapshot((docSnapshot) => {
+        if (docSnapshot.exists && window.setOprBranches) {
+            window.setOprBranches(docSnapshot.data().data);
+        }
+    });
 
-onSnapshot(doc(db, 'config', 'opr_branches'), (docSnapshot) => {
-    if (docSnapshot.exists() && window.setOprBranches) {
-        window.setOprBranches(docSnapshot.data().data);
-    }
-});
-
-onSnapshot(doc(db, 'config', 'treinamentos_extras'), (docSnapshot) => {
-    if (docSnapshot.exists() && window.setTreinamentosExtrasDB) {
-        window.setTreinamentosExtrasDB(docSnapshot.data().data);
-    }
-});
+    window.db.collection('config').doc('treinamentos_extras').onSnapshot((docSnapshot) => {
+        if (docSnapshot.exists && window.setTreinamentosExtrasDB) {
+            window.setTreinamentosExtrasDB(docSnapshot.data().data);
+        }
+    });
+}
 
 // --- Escritor Centralizado (Substitui o localStorage.setItem) ---
-
 window.saveToFirebase = async function(key, currentArray) {
+    if (!window.db) {
+        console.warn('Firebase DB não inicializado. Salvando apenas no localStorage.');
+        return;
+    }
     try {
         if (key === 'simas_opr_history') {
-            const batch = writeBatch(db);
+            const batch = window.db.batch();
             let writes = 0;
             
             // Adições e Atualizações
             for (const item of currentArray) {
                 const prev = localOprHistoryState.find(p => p.id === item.id);
                 if (!prev || JSON.stringify(prev) !== JSON.stringify(item)) {
-                    batch.set(doc(db, 'opr_history', item.id.toString()), item);
+                    batch.set(window.db.collection('opr_history').doc(item.id.toString()), item);
                     writes++;
                 }
             }
             
-            // Exclusões
+            // Exclusões por diff DESATIVADAS por segurança (Impede que cache vazio apague a nuvem)
+            // As deleções no Firestore agora devem ser feitas através de ações explícitas (ex: deleteOpr)
+            /* 
             for (const prev of localOprHistoryState) {
                 if (!currentArray.find(i => i.id === prev.id)) {
-                    batch.delete(doc(db, 'opr_history', prev.id.toString()));
+                    batch.delete(window.db.collection('opr_history').doc(prev.id.toString()));
                     writes++;
                 }
             }
+            */
             
             if (writes > 0) {
                 await batch.commit();
@@ -76,23 +69,26 @@ window.saveToFirebase = async function(key, currentArray) {
             }
         } 
         else if (key === 'simas_top_problemas') {
-            const batch = writeBatch(db);
+            const batch = window.db.batch();
             let writes = 0;
             
             for (const item of currentArray) {
                 const prev = localTopProblemasState.find(p => p.id === item.id);
                 if (!prev || JSON.stringify(prev) !== JSON.stringify(item)) {
-                    batch.set(doc(db, 'top_problemas', item.id.toString()), item);
+                    batch.set(window.db.collection('top_problemas').doc(item.id.toString()), item);
                     writes++;
                 }
             }
             
+            // Exclusões por diff DESATIVADAS por segurança
+            /*
             for (const prev of localTopProblemasState) {
                 if (!currentArray.find(i => i.id === prev.id)) {
-                    batch.delete(doc(db, 'top_problemas', prev.id.toString()));
+                    batch.delete(window.db.collection('top_problemas').doc(prev.id.toString()));
                     writes++;
                 }
             }
+            */
             
             if (writes > 0) {
                 await batch.commit();
@@ -100,10 +96,10 @@ window.saveToFirebase = async function(key, currentArray) {
             }
         }
         else if (key === 'simas_opr_branches') {
-            await setDoc(doc(db, 'config', 'opr_branches'), { data: currentArray });
+            await window.db.collection('config').doc('opr_branches').set({ data: currentArray });
         }
         else if (key === 'simas_treinamentos_extras') {
-            await setDoc(doc(db, 'config', 'treinamentos_extras'), { data: currentArray });
+            await window.db.collection('config').doc('treinamentos_extras').set({ data: currentArray });
         }
     } catch (e) {
         console.error("Erro ao salvar no Firebase:", e);
@@ -113,4 +109,5 @@ window.saveToFirebase = async function(key, currentArray) {
     }
 };
 
-console.log("Firebase DB Sync initialized.");
+console.log("Firebase DB Sync initialized (Compat Mode).");
+
