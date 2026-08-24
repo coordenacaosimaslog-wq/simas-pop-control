@@ -7106,6 +7106,12 @@ function removeUploadedFile(event) {
 
 let activeEvidenciaFile = null;
 
+let activeCopiaNcFile = null;
+let activePopHomologadoFile = null;
+let existingCopiaNc = null;
+let existingPopHomologado = null;
+
+
 function triggerEvidenciaUpload() {
     document.getElementById("form-pop-evidencia").click();
 }
@@ -7171,6 +7177,123 @@ function handleEvidenciaSelect(event) {
     } catch (e) {
         console.error("Erro no upload da evidência:", e);
         showToast("Não foi possível processar a evidência. Tente novamente.", "error");
+    }
+}
+
+
+function triggerCopiaNcUpload() { document.getElementById("form-pop-copia-nc").click(); }
+function handleCopiaNcSelect(event) {
+    try {
+        const file = event.target.files[0];
+        if (!file) return;
+        const maxSize = 15 * 1024 * 1024;
+        if (file.size > maxSize) {
+            showToast("Arquivo excede limite de 15MB", "error");
+            return;
+        }
+        activeCopiaNcFile = file;
+        document.getElementById("upload-zone-copia-nc").style.display = "none";
+        document.getElementById("uploaded-copia-nc-info").style.display = "flex";
+        document.getElementById("uploaded-copia-nc-filename").innerText = file.name;
+        document.getElementById("uploaded-copia-nc-filesize").innerText = (file.size / (1024*1024)).toFixed(1) + " MB";
+    } catch(e) {
+        showToast("Erro ao processar Cópia Não Controlada", "error");
+    }
+}
+function removeUploadedCopiaNc(event) {
+    event.stopPropagation();
+    event.preventDefault();
+    if (!currentUser.permissions.edit) { showToast("Sem permissão", "error"); return; }
+    activeCopiaNcFile = null;
+    existingCopiaNc = null;
+    document.getElementById("form-pop-copia-nc").value = "";
+    document.getElementById("uploaded-copia-nc-info").style.display = "none";
+    document.getElementById("upload-zone-copia-nc").style.display = "flex";
+}
+async function downloadCopiaNc(event) {
+    event.stopPropagation();
+    event.preventDefault();
+    if (activeCopiaNcFile) {
+        const url = URL.createObjectURL(activeCopiaNcFile);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = activeCopiaNcFile.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    } else if (existingCopiaNc && existingCopiaNc.fileId) {
+        try {
+            const f = await FileRepository.get(existingCopiaNc.fileId);
+            if(f && f.blob) {
+                const url = URL.createObjectURL(f.blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = existingCopiaNc.name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } else {
+                showToast("Arquivo não encontrado", "error");
+            }
+        } catch(e) { showToast("Erro ao baixar", "error"); }
+    }
+}
+
+function triggerPopHomologadoUpload() { document.getElementById("form-pop-pop-homologado").click(); }
+function handlePopHomologadoSelect(event) {
+    try {
+        const file = event.target.files[0];
+        if (!file) return;
+        const maxSize = 15 * 1024 * 1024;
+        if (file.size > maxSize) {
+            showToast("Arquivo excede limite de 15MB", "error");
+            return;
+        }
+        activePopHomologadoFile = file;
+        document.getElementById("upload-zone-pop-homologado").style.display = "none";
+        document.getElementById("uploaded-pop-homologado-info").style.display = "flex";
+        document.getElementById("uploaded-pop-homologado-filename").innerText = file.name;
+        document.getElementById("uploaded-pop-homologado-filesize").innerText = (file.size / (1024*1024)).toFixed(1) + " MB";
+    } catch(e) {
+        showToast("Erro ao processar POP Homologado", "error");
+    }
+}
+function removeUploadedPopHomologado(event) {
+    event.stopPropagation();
+    event.preventDefault();
+    if (!currentUser.permissions.edit) { showToast("Sem permissão", "error"); return; }
+    activePopHomologadoFile = null;
+    existingPopHomologado = null;
+    document.getElementById("form-pop-pop-homologado").value = "";
+    document.getElementById("uploaded-pop-homologado-info").style.display = "none";
+    document.getElementById("upload-zone-pop-homologado").style.display = "flex";
+}
+async function downloadPopHomologado(event) {
+    event.stopPropagation();
+    event.preventDefault();
+    if (activePopHomologadoFile) {
+        const url = URL.createObjectURL(activePopHomologadoFile);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = activePopHomologadoFile.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    } else if (existingPopHomologado && existingPopHomologado.fileId) {
+        try {
+            const f = await FileRepository.get(existingPopHomologado.fileId);
+            if(f && f.blob) {
+                const url = URL.createObjectURL(f.blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = existingPopHomologado.name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } else {
+                showToast("Arquivo não encontrado", "error");
+            }
+        } catch(e) { showToast("Erro ao baixar", "error"); }
     }
 }
 
@@ -7241,6 +7364,21 @@ function openCreatePOPModal() {
         activeEvidenciaFile = null;
         document.getElementById("uploaded-evidencia-info").style.display = "none";
         document.getElementById("upload-zone-evidencia").style.display = "flex";
+
+        activeCopiaNcFile = null;
+        existingCopiaNc = null;
+        document.getElementById("uploaded-copia-nc-info").style.display = "none";
+        document.getElementById("upload-zone-copia-nc").style.display = "flex";
+        document.getElementById("trash-copia-nc").style.display = "block";
+        document.getElementById("form-pop-copia-nc").value = "";
+
+        activePopHomologadoFile = null;
+        existingPopHomologado = null;
+        document.getElementById("uploaded-pop-homologado-info").style.display = "none";
+        document.getElementById("upload-zone-pop-homologado").style.display = "flex";
+        document.getElementById("trash-pop-homologado").style.display = "block";
+        document.getElementById("form-pop-pop-homologado").value = "";
+
         
         document.getElementById("pop-modal").classList.add("active");
     } catch (e) {
@@ -7300,6 +7438,21 @@ function openEditPOPModal(id) {
             activeEvidenciaFile = null;
             document.getElementById("uploaded-evidencia-info").style.display = "none";
             document.getElementById("upload-zone-evidencia").style.display = "flex";
+
+        activeCopiaNcFile = null;
+        existingCopiaNc = null;
+        document.getElementById("uploaded-copia-nc-info").style.display = "none";
+        document.getElementById("upload-zone-copia-nc").style.display = "flex";
+        document.getElementById("trash-copia-nc").style.display = "block";
+        document.getElementById("form-pop-copia-nc").value = "";
+
+        activePopHomologadoFile = null;
+        existingPopHomologado = null;
+        document.getElementById("uploaded-pop-homologado-info").style.display = "none";
+        document.getElementById("upload-zone-pop-homologado").style.display = "flex";
+        document.getElementById("trash-pop-homologado").style.display = "block";
+        document.getElementById("form-pop-pop-homologado").value = "";
+
         }
         
         document.getElementById("pop-modal-title").innerHTML = `<i class="fa-solid fa-file-pen"></i> Atualizar POP: ${pop.codigo}`;
@@ -7415,7 +7568,32 @@ async function savePOP(event) {
             }
         }
 
-        const evChunks = [];
+        
+        let finalCopiaNc = popToEdit ? (popToEdit.copiaNaoControlada || null) : null;
+        if (activeCopiaNcFile) {
+            const savedId = await FileRepository.save(activeCopiaNcFile, { module: 'pop' });
+            finalCopiaNc = {
+                fileId: savedId,
+                name: activeCopiaNcFile.name,
+                size: (activeCopiaNcFile.size / (1024*1024)).toFixed(1) + " MB"
+            };
+        } else if (!existingCopiaNc) {
+            finalCopiaNc = null;
+        }
+
+        let finalPopHomologado = popToEdit ? (popToEdit.popHomologado || null) : null;
+        if (activePopHomologadoFile) {
+            const savedId = await FileRepository.save(activePopHomologadoFile, { module: 'pop' });
+            finalPopHomologado = {
+                fileId: savedId,
+                name: activePopHomologadoFile.name,
+                size: (activePopHomologadoFile.size / (1024*1024)).toFixed(1) + " MB"
+            };
+        } else if (!existingPopHomologado) {
+            finalPopHomologado = null;
+        }
+
+const evChunks = [];
         if (activeEvidenciaFile && activeEvidenciaFile.data) {
             const evData = activeEvidenciaFile.data;
             for (let i = 0; i < evData.length; i += 800000) {
@@ -7445,6 +7623,8 @@ async function savePOP(event) {
                 observacoes,
                 arquivo: activeUploadedFile ? activeUploadedFile.name : (oldPop.arquivo || null),
                 evidencia: activeEvidenciaFile ? activeEvidenciaFile.name : (oldPop.evidencia || null),
+                copiaNaoControlada: finalCopiaNc,
+                popHomologado: finalPopHomologado,
                 numChunks: chunks.length > 0 ? chunks.length : (oldPop.numChunks || 0),
                 numEvidenciaChunks: evChunks.length > 0 ? evChunks.length : (oldPop.numEvidenciaChunks || 0),
                 historico: [
@@ -7479,6 +7659,8 @@ async function savePOP(event) {
                 observacoes,
                 arquivo: activeUploadedFile ? activeUploadedFile.name : null,
                 evidencia: activeEvidenciaFile ? activeEvidenciaFile.name : null,
+                copiaNaoControlada: finalCopiaNc,
+                popHomologado: finalPopHomologado,
                 numChunks: chunks.length,
                 numEvidenciaChunks: evChunks.length,
                 historico: [
@@ -11226,3 +11408,62 @@ function adminSearchUsers(term) {
     );
     drawAdminTable(filtered);
 }
+
+
+// --- Correção Drag and Drop ---
+function setupDragAndDrop(zoneId, inputId) {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    if (!zone || !input) return;
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        zone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        zone.addEventListener(eventName, () => {
+            zone.style.borderStyle = 'solid';
+            zone.style.borderColor = 'var(--primary, #0B1D32)';
+            zone.style.backgroundColor = 'rgba(0, 82, 204, 0.05)';
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        zone.addEventListener(eventName, () => {
+            zone.style.borderStyle = 'dashed';
+            zone.style.borderColor = '#cbd5e1';
+            zone.style.backgroundColor = '';
+        }, false);
+    });
+
+    zone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+
+        if (files && files.length > 0) {
+            input.files = files;
+            const event = new Event('change', { bubbles: true });
+            input.dispatchEvent(event);
+        }
+    }, false);
+}
+
+
+function initDND() {
+    setupDragAndDrop('upload-zone', 'form-pop-file');
+    setupDragAndDrop('upload-zone-evidencia', 'form-pop-evidencia');
+    setupDragAndDrop('upload-zone-copia-nc', 'form-pop-copia-nc');
+    setupDragAndDrop('upload-zone-pop-homologado', 'form-pop-pop-homologado');
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDND);
+} else {
+    initDND();
+}
+
+

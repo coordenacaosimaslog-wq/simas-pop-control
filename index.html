@@ -9232,7 +9232,7 @@
 
     </div>
 
-\n<script src="app_test.js?v=20260821_22"></script>
+\n<script src="app_test.js?v=20260824_2"></script>
 
 
 
@@ -10647,6 +10647,42 @@
 
 
 
+
+                    <!-- Cópia não controlada -->
+                    <div class="form-full-width form-group-modal">
+                        <label>Cópia Não Controlada (Opcional)</label>
+                        <div class="upload-drop-zone" id="upload-zone-copia-nc" onclick="triggerCopiaNcUpload()">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <span class="upload-text-main">Arraste ou clique para fazer upload da Cópia Não Controlada</span>
+                            <span class="upload-text-sub">Formatos aceitos: PDF, DOCX, XLSX (Tamanho máx: 15MB)</span>
+                            <input type="file" id="form-pop-copia-nc" style="display: none;" accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm" onchange="handleCopiaNcSelect(event)">
+                        </div>
+                        <div class="uploaded-file-details" id="uploaded-copia-nc-info" style="display: none;">
+                            <span><i class="fa-solid fa-file-pdf" id="uploaded-copia-nc-icon"></i> <strong id="uploaded-copia-nc-filename">arquivo.pdf</strong> (<span id="uploaded-copia-nc-filesize">1.0 MB</span>)</span>
+                            <div style="display: flex; gap: 10px;">
+                                <i class="fa-solid fa-download text-primary" style="cursor: pointer;" onclick="downloadCopiaNc(event)" title="Baixar Documento"></i>
+                                <i class="fa-solid fa-trash-can trash" id="trash-copia-nc" onclick="removeUploadedCopiaNc(event)" title="Remover Documento"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- POP homologado -->
+                    <div class="form-full-width form-group-modal">
+                        <label>POP Homologado (Opcional)</label>
+                        <div class="upload-drop-zone" id="upload-zone-pop-homologado" onclick="triggerPopHomologadoUpload()">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <span class="upload-text-main">Arraste ou clique para fazer upload do POP Homologado</span>
+                            <span class="upload-text-sub">Formatos aceitos: PDF, DOCX, XLSX (Tamanho máx: 15MB)</span>
+                            <input type="file" id="form-pop-pop-homologado" style="display: none;" accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm" onchange="handlePopHomologadoSelect(event)">
+                        </div>
+                        <div class="uploaded-file-details" id="uploaded-pop-homologado-info" style="display: none;">
+                            <span><i class="fa-solid fa-file-pdf" id="uploaded-pop-homologado-icon"></i> <strong id="uploaded-pop-homologado-filename">arquivo.pdf</strong> (<span id="uploaded-pop-homologado-filesize">1.0 MB</span>)</span>
+                            <div style="display: flex; gap: 10px;">
+                                <i class="fa-solid fa-download text-primary" style="cursor: pointer;" onclick="downloadPopHomologado(event)" title="Baixar Documento"></i>
+                                <i class="fa-solid fa-trash-can trash" id="trash-pop-homologado" onclick="removeUploadedPopHomologado(event)" title="Remover Documento"></i>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Observações -->
 
