@@ -6693,6 +6693,17 @@
 
                     </div>
 
+                    <div class="form-group-modal" style="margin-top: 15px;" id="nc-anexos-section">
+                        <label>Anexos</label>
+                        <div class="upload-drop-zone" id="nc-upload-zone" onclick="document.getElementById('form-nc-file').click()">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <span class="upload-text-main">Arraste ou clique para anexar um arquivo</span>
+                            <span class="upload-text-sub">Qualquer formato (Tamanho máx: 15MB)</span>
+                            <input type="file" id="form-nc-file" style="display: none;" onchange="handleNcFileSelect(event)" multiple>
+                        </div>
+                        <div id="nc-anexos-list" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;"></div>
+                    </div>
+
                 </div>
 
                 
@@ -9221,7 +9232,7 @@
 
     </div>
 
-\n<script src="app_test.js?v=20260819_20"></script>
+\n<script src="app_test.js?v=20260821_22"></script>
 
 
 

@@ -1903,6 +1903,7 @@ function renderNcTable() {
                 <td><span class="badge ${badgeClass}">${statusNormalized}</span></td>
                 <td>
                     <button class="action-icon" onclick="editNc('${nc.id}')" title="Editar NC"><i class="fa-solid fa-pen"></i></button>
+                    <button class="action-icon" style="color: ${(nc.anexos && nc.anexos.length > 0) ? '#0B1D32' : '#cbd5e1'}; cursor: ${(nc.anexos && nc.anexos.length > 0) ? 'pointer' : 'not-allowed'};" onclick="${(nc.anexos && nc.anexos.length > 0) ? `handleDownloadNcAnexos('${nc.id}')` : 'return false;'}" title="${(nc.anexos && nc.anexos.length > 0) ? 'Baixar anexos' : 'Sem anexos'}" ${(nc.anexos && nc.anexos.length > 0) ? '' : 'disabled'}><i class="fa-solid fa-download"></i></button>
                     ${(typeof currentUser !== 'undefined' && currentUser && currentUser.isAdmin) ? `<button class="action-icon text-danger" onclick="deleteNc('${nc.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>` : ''}
                 </td>
             </tr>
@@ -7207,86 +7208,7 @@ function downloadEvidenciaFromModal(event) {
     }
 }
 
-function processNcSelectedFile(file) {
-    if (!file) return;
-
-    try {
-        const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'xlsm', 'ppt', 'pptx', 'jpg', 'jpeg', 'png'];
-        const extension = file.name.split('.').pop().toLowerCase();
-        
-        if (!allowedExtensions.includes(extension)) {
-            showToast("Formato não permitido para NCs.", "error");
-            document.getElementById("form-nc-file").value = "";
-            return;
-        }
-
-        const maxSizeInBytes = 15 * 1024 * 1024;
-        if (file.size > maxSizeInBytes) {
-            showToast("Arquivo excede o limite máximo permitido de 15MB.", "error");
-            document.getElementById("form-nc-file").value = "";
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            activeNcUploadedFile = {
-                name: file.name,
-                size: (file.size / (1024 * 1024)).toFixed(1) + " MB",
-                data: e.target.result // Base64 data URL
-            };
-            
-            document.getElementById("nc-upload-zone").style.display = "none";
-            document.getElementById("nc-uploaded-file-info").style.display = "flex";
-            document.getElementById("nc-uploaded-filename").innerText = activeNcUploadedFile.name;
-            document.getElementById("nc-uploaded-filesize").innerText = activeNcUploadedFile.size;
-            
-            const iconElem = document.getElementById("nc-uploaded-file-icon");
-            if (iconElem) {
-                iconElem.className = "fa-solid " + getFileIconClass(file.name);
-            }
-            
-            showToast(`Anexo '${file.name}' carregado para a NC.`, "success");
-        };
-        reader.onerror = function() {
-            showToast("Não foi possível processar o arquivo. Tente novamente.", "error");
-            document.getElementById("form-nc-file").value = "";
-        };
-        reader.readAsDataURL(file);
-    } catch (e) {
-        console.error("Erro no processamento do arquivo:", e);
-        showToast("Não foi possível processar o arquivo. Tente novamente.", "error");
-        document.getElementById("form-nc-file").value = "";
-    }
-}
-
-function handleNcFileSelect(event) {
-    try {
-        const file = event.target.files[0];
-        if (file) {
-            processNcSelectedFile(file);
-        }
-    } catch (e) {
-        console.error("Erro no upload do arquivo:", e);
-        showToast("Não foi possível processar o arquivo. Tente novamente.", "error");
-    }
-}
-
-function removeNcUploadedFile(event) {
-    if(event) {
-        event.stopPropagation();
-        event.preventDefault();
-    }
     
-    activeNcUploadedFile = null;
-    const fileInput = document.getElementById("form-nc-file");
-    if(fileInput) fileInput.value = "";
-    
-    const infoZone = document.getElementById("nc-uploaded-file-info");
-    const dropZone = document.getElementById("nc-upload-zone");
-    
-    if(infoZone) infoZone.style.display = "none";
-    if(dropZone) dropZone.style.display = "block";
-}
 
 function openCreatePOPModal() {
     try {
@@ -9493,6 +9415,217 @@ function applyNcFilters() {
     }
 }
 
+
+let ncCurrentAnexos = [];
+
+function renderNcAnexos() {
+    const listDiv = document.getElementById("nc-anexos-list");
+    if (!listDiv) return;
+    listDiv.innerHTML = "";
+    
+    ncCurrentAnexos.forEach((anexo, index) => {
+        const item = document.createElement("div");
+        item.style.display = "flex";
+        item.style.alignItems = "center";
+        item.style.justifyContent = "space-between";
+        item.style.background = "#f8fafc";
+        item.style.border = "1px solid #cbd5e1";
+        item.style.borderRadius = "8px";
+        item.style.padding = "8px 12px";
+        
+        let actions = ``;
+        if (anexo.fileId) {
+            // Already uploaded
+            actions += `<button type="button" style="background:none; border:none; color:#020122; font-size:16px; cursor:pointer;" title="Baixar" onclick="downloadNcAnexo('${anexo.fileId}', '${anexo.name}')"><i class="fa-solid fa-download"></i></button>`;
+        }
+        if (currentUser && (currentUser.permissions.edit || currentUser.permissions.create)) {
+            actions += `<button type="button" style="background:none; border:none; color:#ef4444; font-size:16px; cursor:pointer; margin-left:8px;" title="Remover" onclick="removeNcAnexo(${index})"><i class="fa-solid fa-trash-can"></i></button>`;
+        }
+        
+        item.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px; overflow: hidden;">
+                <i class="fa-solid fa-file" style="color: #475569; font-size: 18px;"></i>
+                <div style="display: flex; flex-direction: column; overflow: hidden;">
+                    <span style="font-weight: 600; font-size: 13px; color: #0f172a; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;" title="${anexo.name}">${anexo.name}</span>
+                    <span style="font-size: 11px; color: #64748b;">${anexo.size}</span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 5px; flex-shrink: 0;">
+                ${actions}
+            </div>
+        `;
+        listDiv.appendChild(item);
+    });
+}
+
+function handleNcFileSelect(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        if (f.size > 15 * 1024 * 1024) {
+            showToast(`O arquivo ${f.name} excede o limite de 15MB.`, "error");
+            continue;
+        }
+        ncCurrentAnexos.push({
+            file: f,
+            name: f.name,
+            size: (f.size / (1024 * 1024)).toFixed(2) + " MB"
+        });
+    }
+    
+    event.target.value = "";
+    renderNcAnexos();
+}
+
+function removeNcAnexo(index) {
+    if (!currentUser.permissions.edit && !currentUser.permissions.create) return;
+    ncCurrentAnexos.splice(index, 1);
+    renderNcAnexos();
+}
+
+async function downloadNcAnexo(fileId, name) {
+    try {
+        const fileDoc = await FileRepository.get(fileId);
+        if (!fileDoc || !fileDoc.blob) {
+            showToast("Anexo não encontrado ou ainda não sincronizado.", "error");
+            return;
+        }
+        const url = URL.createObjectURL(fileDoc.blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = name || "anexo";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        console.error("Erro ao baixar anexo:", e);
+        showToast("Erro ao baixar anexo.", "error");
+    }
+}
+
+
+function handleDownloadNcAnexos(ncId) {
+    const nc = ncs.find(n => n.id === ncId);
+    if (!nc || !nc.anexos || nc.anexos.length === 0) return;
+    
+    if (nc.anexos.length === 1) {
+        downloadNcAnexo(nc.anexos[0].fileId, nc.anexos[0].name);
+    } else {
+        showMultiAnexosModal(nc);
+    }
+}
+
+function showMultiAnexosModal(nc) {
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100%";
+    overlay.style.height = "100%";
+    overlay.style.backgroundColor = "rgba(0,0,0,0.5)";
+    overlay.style.zIndex = "9999";
+    overlay.style.display = "flex";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+    
+    const modal = document.createElement("div");
+    modal.style.background = "#fff";
+    modal.style.padding = "20px";
+    modal.style.borderRadius = "8px";
+    modal.style.width = "400px";
+    modal.style.boxShadow = "0 4px 15px rgba(0,0,0,0.2)";
+    
+    const title = document.createElement("h3");
+    title.innerText = "Baixar Anexos";
+    title.style.marginTop = "0";
+    title.style.marginBottom = "15px";
+    title.style.color = "#0B1D32";
+    title.style.fontSize = "16px";
+    modal.appendChild(title);
+    
+    const list = document.createElement("div");
+    list.style.display = "flex";
+    list.style.flexDirection = "column";
+    list.style.gap = "10px";
+    list.style.maxHeight = "300px";
+    list.style.overflowY = "auto";
+    
+    nc.anexos.forEach(anexo => {
+        const item = document.createElement("div");
+        item.style.display = "flex";
+        item.style.alignItems = "center";
+        item.style.justifyContent = "space-between";
+        item.style.padding = "10px";
+        item.style.background = "#f8fafc";
+        item.style.border = "1px solid #cbd5e1";
+        item.style.borderRadius = "6px";
+        
+        const nameDiv = document.createElement("div");
+        nameDiv.style.display = "flex";
+        nameDiv.style.alignItems = "center";
+        nameDiv.style.gap = "8px";
+        nameDiv.style.overflow = "hidden";
+        
+        const icon = document.createElement("i");
+        icon.className = "fa-solid fa-file";
+        icon.style.color = "#475569";
+        
+        const nameSpan = document.createElement("span");
+        nameSpan.innerText = anexo.name;
+        nameSpan.title = anexo.name;
+        nameSpan.style.whiteSpace = "nowrap";
+        nameSpan.style.overflow = "hidden";
+        nameSpan.style.textOverflow = "ellipsis";
+        nameSpan.style.fontSize = "13px";
+        nameSpan.style.fontWeight = "600";
+        nameSpan.style.color = "#0f172a";
+        
+        nameDiv.appendChild(icon);
+        nameDiv.appendChild(nameSpan);
+        
+        const dlBtn = document.createElement("button");
+        dlBtn.innerHTML = '<i class="fa-solid fa-download"></i> Baixar';
+        dlBtn.style.background = "#0B1D32";
+        dlBtn.style.color = "#fff";
+        dlBtn.style.border = "none";
+        dlBtn.style.padding = "6px 12px";
+        dlBtn.style.borderRadius = "4px";
+        dlBtn.style.cursor = "pointer";
+        dlBtn.style.fontSize = "12px";
+        dlBtn.onclick = () => {
+            downloadNcAnexo(anexo.fileId, anexo.name);
+        };
+        
+        item.appendChild(nameDiv);
+        item.appendChild(dlBtn);
+        list.appendChild(item);
+    });
+    
+    modal.appendChild(list);
+    
+    const closeBtn = document.createElement("button");
+    closeBtn.innerText = "Fechar";
+    closeBtn.style.marginTop = "20px";
+    closeBtn.style.width = "100%";
+    closeBtn.style.padding = "8px";
+    closeBtn.style.background = "#e2e8f0";
+    closeBtn.style.color = "#475569";
+    closeBtn.style.border = "none";
+    closeBtn.style.borderRadius = "4px";
+    closeBtn.style.cursor = "pointer";
+    closeBtn.style.fontWeight = "bold";
+    closeBtn.onclick = () => {
+        document.body.removeChild(overlay);
+    };
+    
+    modal.appendChild(closeBtn);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+}
+
 function openCreateNcModal() {
     if (!currentUser.permissions.create) {
         showToast("Nível de acesso insuficiente para cadastrar NCs.", "error");
@@ -9501,6 +9634,8 @@ function openCreateNcModal() {
     
     document.getElementById("form-nc-id").value = "";
     document.getElementById("nc-form").reset();
+    ncCurrentAnexos = [];
+    renderNcAnexos();
     document.getElementById("nc-modal-title").innerText = "Registrar Nova Não Conformidade";
     document.getElementById("form-nc-codigo").value = "";
     
@@ -9536,8 +9671,32 @@ async function saveNc(event) {
         let ncData = {
             filial, dataOcorrencia, origem, identificacao, tipo, setor, cliente, responsavel, status, descricao,
             updatedAt: new Date().toISOString(),
-            updatedBy: currentUser.username || "Desconhecido"
+            updatedBy: currentUser.username || "Desconhecido",
+            anexos: []
         };
+        
+        // Upload new anexos
+        const finalAnexos = [];
+        for (const anexo of ncCurrentAnexos) {
+            if (anexo.fileId) {
+                // Already uploaded
+                finalAnexos.push(anexo);
+            } else if (anexo.file) {
+                // Needs upload
+                try {
+                    const savedId = await FileRepository.save(anexo.file, { module: 'nc' });
+                    finalAnexos.push({
+                        fileId: savedId,
+                        name: anexo.name,
+                        size: anexo.size
+                    });
+                } catch(e) {
+                    console.error("Erro no upload do anexo " + anexo.name, e);
+                }
+            }
+        }
+        ncData.anexos = finalAnexos;
+
         
         const btnSave = document.getElementById("btn-save-nc");
         btnSave.disabled = true;
@@ -9613,6 +9772,8 @@ function editNc(id) {
     
     document.getElementById("form-nc-id").value = nc.id;
     document.getElementById("form-nc-codigo").value = nc.codigo || "";
+    ncCurrentAnexos = nc.anexos ? [...nc.anexos] : [];
+    renderNcAnexos();
     document.getElementById("form-nc-data").value = nc.dataOcorrencia || "";
     
     const setSelectValue = (id, val) => {
