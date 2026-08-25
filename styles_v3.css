@@ -1471,8 +1471,9 @@ input[type="date"]:focus, textarea:focus {
 .status-badge i { font-size: 12px; }
 
 .status-badge.revisado {
-    background-color: #D8F5DF;
-    color: #1B7F3A;
+    background-color: #DBEAFE;
+    color: #1D4ED8;
+    border: 1px solid #93C5FD;
 }
 
 @keyframes pulse-amber {
@@ -1489,9 +1490,9 @@ input[type="date"]:focus, textarea:focus {
 }
 
 .status-badge.treinamento {
-    background-color: #E0E7FF;
-    color: #4338CA;
-    border: 1px solid #C7D2FE;
+    background-color: #F3E8FF;
+    color: #7E22CE;
+    border: 1px solid #D8B4FE;
     animation: pulse-amber 2s infinite;
 }
 
@@ -1501,8 +1502,9 @@ input[type="date"]:focus, textarea:focus {
 }
 
 .status-badge.homologado {
-    background-color: #DCEBFF;
-    color: #0052CC;
+    background-color: #DCFCE7;
+    color: #15803D;
+    border: 1px solid #86EFAC;
 }
 
 .status-badge.copia {
