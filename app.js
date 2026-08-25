@@ -7456,7 +7456,8 @@ function openEditPOPModal(id) {
         document.getElementById("form-pop-tipo").value = pop.tipo || "POP";
         document.getElementById("form-pop-abrangencia").value = pop.abrangencia || "Global";
         document.getElementById("form-pop-area").value = pop.area;
-        document.getElementById("form-pop-responsavel").value = pop.responsavel;
+        let respNorm = (pop.responsavel && pop.responsavel.toUpperCase().includes("BRUN")) ? "BRUNO" : pop.responsavel;
+        document.getElementById("form-pop-responsavel").value = respNorm;
         document.getElementById("form-pop-status").value = pop.status;
         document.getElementById("form-pop-data-revisao").value = pop.dataRevisao;
         document.getElementById("form-pop-proxima-revisao").value = pop.proximaRevisao;
@@ -7860,7 +7861,8 @@ function openDetailsModal(id) {
         }
         
         document.getElementById("details-area").innerText = pop.area;
-        document.getElementById("details-responsavel").innerText = pop.responsavel;
+        let respNormDetails = (pop.responsavel && pop.responsavel.toUpperCase().includes("BRUN")) ? "BRUNO" : pop.responsavel;
+        document.getElementById("details-responsavel").innerText = respNormDetails;
         document.getElementById("details-data-revisao").innerText = formatDate(pop.dataRevisao);
         document.getElementById("details-proxima-revisao").innerText = formatDate(pop.proximaRevisao);
         document.getElementById("details-observacoes").innerText = pop.observacoes || "Nenhuma observao ou justificativa documental inserida para este ciclo.";
@@ -11631,3 +11633,76 @@ if (document.readyState === 'loading') {
 }
 
 
+
+
+
+
+// --- AUXILIARY STICKY SCROLLBAR FOR POPS TABLE ---
+document.addEventListener('DOMContentLoaded', () => {
+    const tableContainer = document.getElementById('pops-table-container');
+    const tableId = document.getElementById('pops-table-id');
+    const stickyScrollbar = document.getElementById('pops-sticky-scrollbar');
+    const stickyContent = document.getElementById('pops-sticky-scrollbar-content');
+
+    if (tableContainer && tableId && stickyScrollbar && stickyContent) {
+        
+        const syncWidths = () => {
+            stickyContent.style.width = tableId.offsetWidth + 'px';
+        };
+        
+        if (window.ResizeObserver) {
+            new ResizeObserver(syncWidths).observe(tableId);
+        } else {
+            window.addEventListener('resize', syncWidths);
+            setInterval(syncWidths, 1000);
+        }
+        
+        let isSyncingLeft = false;
+        let isSyncingRight = false;
+        
+        tableContainer.addEventListener('scroll', () => {
+            if (!isSyncingLeft) {
+                isSyncingRight = true;
+                stickyScrollbar.scrollLeft = tableContainer.scrollLeft;
+            }
+            isSyncingLeft = false;
+        });
+        
+        stickyScrollbar.addEventListener('scroll', () => {
+            if (!isSyncingRight) {
+                isSyncingLeft = true;
+                tableContainer.scrollLeft = stickyScrollbar.scrollLeft;
+            }
+            isSyncingRight = false;
+        });
+        
+        const toggleStickyScrollbar = () => {
+            const popsSection = document.getElementById('view-pops');
+            if (popsSection && !popsSection.classList.contains('active')) {
+                stickyScrollbar.style.display = 'none';
+                return;
+            }
+
+            const rect = tableContainer.getBoundingClientRect();
+            const isPartiallyVisible = rect.top < window.innerHeight && rect.bottom > window.innerHeight;
+            
+            if (isPartiallyVisible && tableId.offsetWidth > tableContainer.offsetWidth) {
+                stickyScrollbar.style.display = 'block';
+                stickyScrollbar.style.position = 'fixed';
+                stickyScrollbar.style.bottom = '0';
+                stickyScrollbar.style.left = rect.left + 'px';
+                stickyScrollbar.style.width = rect.width + 'px';
+            } else {
+                stickyScrollbar.style.display = 'none';
+            }
+        };
+        
+        window.addEventListener('scroll', toggleStickyScrollbar);
+        window.addEventListener('resize', toggleStickyScrollbar);
+        
+        setTimeout(() => {
+            syncWidths();
+            toggleStickyScrollbar();
+        }, 500);
+    }
+});

@@ -191,6 +191,51 @@
 
 
 
+
+    <style>
+        /* CSS Trick to prevent flex-item expansion while maintaining 100% width */
+        #pops-table-container {
+            width: 0;
+            min-width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        #pops-table-id {
+            min-width: 1400px;
+            width: max-content;
+        }
+    
+        /* Custom styling exclusively for the POPs horizontal scrollbars */
+        #pops-table-container,
+        #pops-sticky-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: var(--navy-mid) #F1F5F9;
+        }
+
+        #pops-table-container::-webkit-scrollbar,
+        #pops-sticky-scrollbar::-webkit-scrollbar {
+            height: 12px;
+        }
+
+        #pops-table-container::-webkit-scrollbar-track,
+        #pops-sticky-scrollbar::-webkit-scrollbar-track {
+            background-color: #F1F5F9;
+            border-radius: 8px;
+        }
+
+        #pops-table-container::-webkit-scrollbar-thumb,
+        #pops-sticky-scrollbar::-webkit-scrollbar-thumb {
+            background-color: var(--navy-mid, #1A365D);
+            border-radius: 8px;
+            border: 2px solid #F1F5F9;
+        }
+
+        #pops-table-container::-webkit-scrollbar-thumb:hover,
+        #pops-sticky-scrollbar::-webkit-scrollbar-thumb:hover {
+            background-color: var(--navy-primary, #0B1D32);
+        }
+    </style>
+
 </head>
 
 
@@ -5411,13 +5456,11 @@
 
 
 
-                        <div class="table-responsive">
-
-
-
-
-
-                            <table class="custom-table" id="pops-table-id">
+                        <div id="pops-sticky-scrollbar" style="position: sticky; bottom: 0; width: 100%; overflow-x: auto; overflow-y: hidden; z-index: 50; background: #fff; border-top: 1px solid #ccc; display: none;">
+                            <div id="pops-sticky-scrollbar-content" style="height: 1px;"></div>
+                        </div>
+                        <div class="table-responsive" id="pops-table-container">
+<table class="custom-table" id="pops-table-id">
 
 
 
@@ -10504,7 +10547,7 @@
                             <option value="KATHERINE">KATHERINE</option>
 
 
-                            <option value="BRUNÃO">BRUNÃO</option>
+                            <option value="BRUNO">BRUNO</option>
 
 
                             <option value="DANILI">DANILI</option>
