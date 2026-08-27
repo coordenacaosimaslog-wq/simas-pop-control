@@ -1,4 +1,4 @@
-
+﻿
 const TRAINING_DOCUMENT_CODES = {
     "MATRIZ": "MT FM RH 003.ANX1",
     "SAO ROQUE": "SR FM RH 003.ANX1",
@@ -385,7 +385,7 @@ async function initializeAuthenticatedApp() {
         if (typeof renderMetricsGrid === 'function') renderMetricsGrid();
 
         // Exibir primeira view
-        switchView('pops');
+        switchView('dashboard');
 
         // Carregar dados locais (POPs, etc)
         if (typeof loadSimasData === 'function') await loadSimasData();
@@ -11635,8 +11635,6 @@ if (document.readyState === 'loading') {
 
 
 
-
-
 // --- AUXILIARY STICKY SCROLLBAR FOR POPS TABLE ---
 document.addEventListener('DOMContentLoaded', () => {
     const tableContainer = document.getElementById('pops-table-container');
@@ -11677,6 +11675,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         const toggleStickyScrollbar = () => {
+            // Only show if the pops module is active/visible
             const popsSection = document.getElementById('view-pops');
             if (popsSection && !popsSection.classList.contains('active')) {
                 stickyScrollbar.style.display = 'none';
@@ -11684,6 +11683,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const rect = tableContainer.getBoundingClientRect();
+            // Visible condition: Top is above viewport bottom, Bottom is below viewport bottom
             const isPartiallyVisible = rect.top < window.innerHeight && rect.bottom > window.innerHeight;
             
             if (isPartiallyVisible && tableId.offsetWidth > tableContainer.offsetWidth) {
@@ -11700,6 +11700,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('scroll', toggleStickyScrollbar);
         window.addEventListener('resize', toggleStickyScrollbar);
         
+        // Initial setup
         setTimeout(() => {
             syncWidths();
             toggleStickyScrollbar();
