@@ -4312,7 +4312,7 @@ async function syncOprFileToCloud(fileId) {
         }
         
         batch.set(docRef, {
-            fileId, oprId, name: name || 'unnamed_file', type: blob.type || type, size: blob.size || size,
+            fileId, oprId: oprId || null, name: name || 'unnamed_file', type: blob.type || type, size: blob.size || size,
             numChunks, createdAt: createdAt || new Date().toISOString(), module, itemId, slot,
             metadata: metadata || {}
         });
