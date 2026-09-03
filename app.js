@@ -1912,7 +1912,7 @@ function renderNcTable() {
     if (!tbody) return;
     
     if (typeof filteredNcs === 'undefined' || !filteredNcs || filteredNcs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:#64748b; padding:20px; font-style:italic;">Nenhuma Não Conformidade encontrada.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; color:#64748b; padding:20px; font-style:italic;">Nenhuma Não Conformidade encontrada.</td></tr>';
         return;
     }
     
@@ -1938,6 +1938,7 @@ function renderNcTable() {
                         ${numPrefix ? `<span>${numPrefix}</span>` : ''}
                     </div>
                 </td>
+                <td>${nc.codigoCliente || "—"}</td>
                 <td>${dataFormatada}</td>
                 <td>${nc.filial || '—'}</td>
                 <td>${nc.tipo || '—'}</td>
@@ -10127,6 +10128,7 @@ function openCreateNcModal() {
     renderNcAnexos();
     document.getElementById("nc-modal-title").innerText = "Registrar Nova Não Conformidade";
     document.getElementById("form-nc-codigo").value = "";
+    if(document.getElementById("form-nc-codigo-cliente")) document.getElementById("form-nc-codigo-cliente").value = "";
     
     document.getElementById("nc-modal").classList.add("active");
 }
@@ -10146,6 +10148,7 @@ async function saveNc(event) {
         const tipo = document.getElementById("form-nc-tipo").value;
         const setor = document.getElementById("form-nc-setor").value;
         const cliente = document.getElementById("form-nc-cliente").value;
+        const codigoCliente = document.getElementById("form-nc-codigo-cliente") ? document.getElementById("form-nc-codigo-cliente").value.trim() : "";
         const responsavel = document.getElementById("form-nc-responsavel").value;
         const status = document.getElementById("form-nc-status").value;
         const descricao = document.getElementById("form-nc-descricao").value.trim();
@@ -10158,7 +10161,7 @@ async function saveNc(event) {
         }
 
         let ncData = {
-            filial, dataOcorrencia, origem, identificacao, tipo, setor, cliente, responsavel, status, descricao,
+            filial, dataOcorrencia, origem, identificacao, tipo, setor, cliente, codigoCliente, responsavel, status, descricao,
             updatedAt: new Date().toISOString(),
             updatedBy: currentUser.username || "Desconhecido",
             anexos: []
@@ -10312,6 +10315,7 @@ function editNc(id) {
     
     document.getElementById("form-nc-id").value = nc.id;
     document.getElementById("form-nc-codigo").value = nc.codigo || "";
+    if(document.getElementById("form-nc-codigo-cliente")) document.getElementById("form-nc-codigo-cliente").value = nc.codigoCliente || "";
     ncCurrentAnexos = nc.anexos ? [...nc.anexos] : [];
     renderNcAnexos();
     document.getElementById("form-nc-data").value = nc.dataOcorrencia || "";
