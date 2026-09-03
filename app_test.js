@@ -1,4 +1,4 @@
-﻿
+
 const TRAINING_DOCUMENT_CODES = {
     "MATRIZ": "MT FM RH 003.ANX1",
     "SAO ROQUE": "SR FM RH 003.ANX1",
@@ -324,7 +324,7 @@ async function loadSimasData() {
     
     if (typeof applyFilters === 'function') applyFilters();
     if (typeof renderUrgentDashboardList === 'function') renderUrgentDashboardList();
-    if (typeof initOrUpdateCharts === 'function') initOrUpdateCharts();
+    if (typeof initOrUpdateCharts === 'function') loadExecutiveDashboard();
 
     if (typeof db !== 'undefined') {
         if (popsUnsubscribe) return;
@@ -349,7 +349,7 @@ async function loadSimasData() {
                 
                 if (typeof applyFilters === 'function') applyFilters();
                 if (typeof renderUrgentDashboardList === 'function') renderUrgentDashboardList();
-                if (typeof initOrUpdateCharts === 'function') initOrUpdateCharts();
+                if (typeof initOrUpdateCharts === 'function') loadExecutiveDashboard();
                 
             } catch (e) {
                 console.error("Erro no processamento em tempo real dos POPs:", e);
@@ -385,10 +385,11 @@ async function initializeAuthenticatedApp() {
         if (typeof renderMetricsGrid === 'function') renderMetricsGrid();
 
         // Exibir primeira view
-        switchView('pops');
+        switchView('dashboard');
 
         // Carregar dados locais (POPs, etc)
         if (typeof loadSimasData === 'function') await loadSimasData();
+        if (typeof sincronizarTopProblemas === 'function') await sincronizarTopProblemas();
         
         authenticatedAppInitialized = true;
         console.log("[AUTH] Aplicação autenticada inicializada.");
@@ -454,7 +455,7 @@ function switchView(viewId) {
 
         if (viewId === "dashboard") {
             setTimeout(() => {
-                initOrUpdateCharts();
+                loadExecutiveDashboard();
                 renderUrgentDashboardList();
             }, 50);
         } else if (viewId === "one-page-report" || viewId === "opr") {
@@ -1420,8 +1421,8 @@ function renderizarGraficoAgua(empIndex = -1) {
                     align: 'center',
                     anchor: 'center',
                     color: '#fff',
-                    formatter: function(val) { return val > 0 ? val + 'L' : ''; },
-                    font: { weight: '800', size: 12 }
+                    formatter: function(val) { return val > 0 ? val + ' L' : ''; },
+                    font: { weight: '800', size: 14 }
                 }
             }]
         },
@@ -1436,7 +1437,7 @@ function renderizarGraficoAgua(empIndex = -1) {
                 },
                 x: {
                     grid: { display: false },
-                    ticks: { font: { size: 11, weight: '700' }, color: '#64748b' }
+                    ticks: { font: { size: 12, weight: '700' }, color: '#334155' }
                 }
             },
             plugins: {
@@ -1543,6 +1544,7 @@ function salvarAgua() {
 
     // NAO CHAMAR persistCurrentOpr() AQUI, mantendo a atomicidade!
     renderizarGraficoAgua(); 
+    if (typeof markOprDirty === 'function') markOprDirty();
     fecharModalAgua();
     if (typeof showToast === 'function') showToast('Consumo de agua salvo!', 'success');
 }
@@ -1668,9 +1670,9 @@ async function renderizarQm() {
     
     if (!sMes || !sAno || !tbody) return;
     
-    const mes = sMes.value;
-    const ano = sAno.value;
-    const currentBranch = currentOprBranch || document.querySelector('#opr-branch-selector .branch-cards-grid .selected')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] || '';
+    let mes = sMes.value;
+    let ano = sAno.value;
+    let currentBranch = currentOprBranch || document.querySelector('#opr-branch-selector .branch-cards-grid .selected')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] || '';
     
     if (!currentBranch) return;
 
@@ -1763,7 +1765,27 @@ async function renderizarQm() {
             const labelsTipo = Object.keys(countPorTipo);
             const dataTipo = Object.values(countPorTipo);
             
-            window.qmChartTipo = new Chart(ctxTipo, {
+            
+            const qmBarValueLabels = {
+                id: 'qmBarValueLabels',
+                afterDatasetsDraw(chart) {
+                    const { ctx, data } = chart;
+                    ctx.save();
+                    ctx.font = 'bold 10px sans-serif';
+                    ctx.fillStyle = '#333';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    
+                    chart.getDatasetMeta(0).data.forEach((bar, index) => {
+                        const value = data.datasets[0].data[index];
+                        if (value > 0) {
+                            ctx.fillText(value, bar.x + 5, bar.y);
+                        }
+                    });
+                    ctx.restore();
+                }
+            };
+window.qmChartTipo = new Chart(ctxTipo, {
                 type: 'bar',
                 data: {
                     labels: labelsTipo,
@@ -1774,10 +1796,12 @@ async function renderizarQm() {
                         borderRadius: 4
                     }]
                 },
+                plugins: [qmBarValueLabels],
                 options: {
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: { padding: { right: 30 } },
                     plugins: { legend: { display: false } },
                     scales: { 
                         x: { display: false, beginAtZero: true, ticks: { stepSize: 1 }, grid: { display: false } }, 
@@ -1804,7 +1828,28 @@ async function renderizarQm() {
                         const simasColors = ['#0B1D32', '#A30D00', '#4F000B', '#020122', '#AB2317'];
             const bgColorStatus = labelsStatus.map((_, i) => simasColors[i % 5]);
             
-            window.qmChartStatus = new Chart(ctxStatus, {
+            
+            const qmDoughnutValueLabels = {
+                id: 'qmDoughnutValueLabels',
+                afterDatasetsDraw(chart) {
+                    const { ctx, data } = chart;
+                    ctx.save();
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.fillStyle = '#fff';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    
+                    chart.getDatasetMeta(0).data.forEach((arc, index) => {
+                        const value = data.datasets[0].data[index];
+                        if (value > 0) {
+                            const center = arc.tooltipPosition();
+                            ctx.fillText(value, center.x, center.y);
+                        }
+                    });
+                    ctx.restore();
+                }
+            };
+window.qmChartStatus = new Chart(ctxStatus, {
                 type: 'doughnut',
                 data: {
                     labels: labelsStatus,
@@ -1815,6 +1860,7 @@ async function renderizarQm() {
                         cutout: '70%'
                     }]
                 },
+                plugins: [qmDoughnutValueLabels],
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -2424,6 +2470,8 @@ async function loadMelhoriasImagesForCache(token) {
     const record = oprHistoryDB.find(r => r.id === currentOprRecordId);
     if (!record || !record.data.melhoriasData) return;
     
+    let cacheUpdated = false;
+    
     for (let ava of record.data.melhoriasData) {
         if (oprOpeningSequence !== token) return;
         if (ava.imgAntesFileId && !ava.imgAntesUrl) {
@@ -2433,11 +2481,13 @@ async function loadMelhoriasImagesForCache(token) {
                     const url = safeCreateObjectURL(f.blob);
                     melhoriasUrlsToRevoke.add(url);
                     ava.imgAntesUrl = url;
+                    cacheUpdated = true;
                 } else {
-                    console.error("Melhorias: Imagem indisponvel. OPR:", currentOprRecordId, "Registro:", ava.id, "Slot: antes", "FileId:", ava.imgAntesFileId);
+                    console.error("Melhorias: Imagem indisponível. OPR:", currentOprRecordId, "Registro:", ava.id, "Slot: antes", "FileId:", ava.imgAntesFileId);
                     ava.imgAntesUrl = 'MISSING';
+                    cacheUpdated = true;
                 }
-            } catch (e) { console.error("Melhorias: Imagem indisponvel", e); ava.imgAntesUrl = 'MISSING'; }
+            } catch (e) { console.error("Melhorias: Imagem indisponível", e); ava.imgAntesUrl = 'MISSING'; cacheUpdated = true; }
         }
         if (oprOpeningSequence !== token) return;
         if (ava.imgDepoisFileId && !ava.imgDepoisUrl) {
@@ -2447,12 +2497,18 @@ async function loadMelhoriasImagesForCache(token) {
                     const url = safeCreateObjectURL(f.blob);
                     melhoriasUrlsToRevoke.add(url);
                     ava.imgDepoisUrl = url;
+                    cacheUpdated = true;
                 } else {
-                    console.error("Melhorias: Imagem indisponvel. OPR:", currentOprRecordId, "Registro:", ava.id, "Slot: depois", "FileId:", ava.imgDepoisFileId);
+                    console.error("Melhorias: Imagem indisponível. OPR:", currentOprRecordId, "Registro:", ava.id, "Slot: depois", "FileId:", ava.imgDepoisFileId);
                     ava.imgDepoisUrl = 'MISSING';
+                    cacheUpdated = true;
                 }
-            } catch (e) { console.error("Melhorias: Imagem indisponvel", e); ava.imgDepoisUrl = 'MISSING'; }
+            } catch (e) { console.error("Melhorias: Imagem indisponível", e); ava.imgDepoisUrl = 'MISSING'; cacheUpdated = true; }
         }
+    }
+    
+    if (cacheUpdated && typeof renderizarMelhorias === 'function') {
+        renderizarMelhorias();
     }
 }
 
@@ -2497,7 +2553,10 @@ async function abrirModalLUP(id = null) {
     document.getElementById('lup-id').value = ava ? ava.id : '';
     document.getElementById('lup-depto').value = ava ? ava.depto : '';
     document.getElementById('lup-data').value = ava ? ava.data : new Date().toISOString().split('T')[0];
-    document.getElementById('lup-classificacao').value = ava ? ava.classificacao : '';
+    let classif = ava ? ava.classificacao : '';
+    if (classif === 'Básico' || classif === 'Conhecimento Bǭsico') classif = 'Conhecimento Básico';
+    else if (classif === 'Atenção' || classif === 'Ponto de Atenǜo' || classif === 'Atenǜo') classif = 'Ponto de Atenção';
+    document.getElementById('lup-classificacao').value = classif;
     document.getElementById('lup-responsavel').value = ava ? ava.responsavel : (typeof currentUser !== 'undefined' && currentUser ? currentUser.name : '');
     document.getElementById('lup-titulo').value = ava ? ava.titulo : '';
     document.getElementById('lup-subtitulo').value = ava ? ava.subtitulo : '';
@@ -2776,7 +2835,7 @@ async function salvarLUP() {
     if (isNew) {
         ava.codigo = finalCodigo;
     } else {
-        // Se for edio mantm original
+        // Se for edição mantm original
         ava.codigo = codigoInput;
     }
     ava.versao = versao;
@@ -2872,7 +2931,13 @@ function renderizarLUP() {
     const emptyMsg = document.getElementById('lup-empty-msg');
     grid.innerHTML = '';
     
-    let lups = record.data.lupData || [];
+    let lups = (record.data.lupData || []).map(lup => {
+        let L = { ...lup };
+        if (L.classificacao === 'Básico' || L.classificacao === 'Conhecimento Bǭsico') L.classificacao = 'Conhecimento Básico';
+        else if (L.classificacao === 'Atenção' || L.classificacao === 'Ponto de Atenǜo' || L.classificacao === 'Atenǜo') L.classificacao = 'Ponto de Atenção';
+        return L;
+    });
+    
     if (currentLupFilter !== 'Todas') {
         lups = lups.filter(L => L.classificacao === currentLupFilter);
     }
@@ -2887,8 +2952,8 @@ function renderizarLUP() {
     
     lups.forEach(lup => {
         let badgeColor = '#64748b'; let badgeBg = '#e2e8f0';
-        if (lup.classificacao === 'Básico') { badgeColor = '#0ea5e9'; badgeBg = '#e0f2fe'; }
-        else if (lup.classificacao === 'Atenção') { badgeColor = '#d97706'; badgeBg = '#fef3c7'; }
+        if (lup.classificacao === 'Conhecimento Básico') { badgeColor = '#0ea5e9'; badgeBg = '#e0f2fe'; }
+        else if (lup.classificacao === 'Ponto de Atenção') { badgeColor = '#d97706'; badgeBg = '#fef3c7'; }
         else if (lup.classificacao === 'Melhoria') { badgeColor = '#16a34a'; badgeBg = '#dcfce7'; }
     
         const card = document.createElement('div');
@@ -3084,29 +3149,41 @@ async function loadLupImagesForCache(token) {
     const record = oprHistoryDB.find(r => r.id === currentOprRecordId);
     if (!record || !record.data.lupData) return;
     
+    let cacheUpdated = false;
+    
     for (let ava of record.data.lupData) {
         if (oprOpeningSequence !== token) return;
         if (ava.imgAntesFileId && !ava.imgAntesUrl) {
             try {
                 const f = await FileRepository.get(ava.imgAntesFileId);
-                if (f && f.blob) ava.imgAntesUrl = safeCreateObjectURL(f.blob);
-                else {
-                    console.error("LUP: Imagem indisponvel. OPR:", currentOprRecordId, "Registro:", ava.id, "Slot: antes", "FileId:", ava.imgAntesFileId);
+                if (f && f.blob) {
+                    ava.imgAntesUrl = safeCreateObjectURL(f.blob);
+                    cacheUpdated = true;
+                } else {
+                    console.error("LUP: Imagem indisponível. OPR:", currentOprRecordId, "Registro:", ava.id, "Slot: antes", "FileId:", ava.imgAntesFileId);
                     ava.imgAntesUrl = 'MISSING';
+                    cacheUpdated = true;
                 }
-            } catch (e) { console.error("LUP: Imagem indisponvel", e); ava.imgAntesUrl = 'MISSING'; }
+            } catch (e) { console.error("LUP: Imagem indisponível", e); ava.imgAntesUrl = 'MISSING'; cacheUpdated = true; }
         }
         if (oprOpeningSequence !== token) return;
         if (ava.imgDepoisFileId && !ava.imgDepoisUrl) {
             try {
                 const f = await FileRepository.get(ava.imgDepoisFileId);
-                if (f && f.blob) ava.imgDepoisUrl = safeCreateObjectURL(f.blob);
-                else {
-                    console.error("LUP: Imagem indisponvel. OPR:", currentOprRecordId, "Registro:", ava.id, "Slot: depois", "FileId:", ava.imgDepoisFileId);
+                if (f && f.blob) {
+                    ava.imgDepoisUrl = safeCreateObjectURL(f.blob);
+                    cacheUpdated = true;
+                } else {
+                    console.error("LUP: Imagem indisponível. OPR:", currentOprRecordId, "Registro:", ava.id, "Slot: depois", "FileId:", ava.imgDepoisFileId);
                     ava.imgDepoisUrl = 'MISSING';
+                    cacheUpdated = true;
                 }
-            } catch (e) { console.error("LUP: Imagem indisponvel", e); ava.imgDepoisUrl = 'MISSING'; }
+            } catch (e) { console.error("LUP: Imagem indisponível", e); ava.imgDepoisUrl = 'MISSING'; cacheUpdated = true; }
         }
+    }
+    
+    if (cacheUpdated && typeof renderizarLUP === 'function') {
+        renderizarLUP();
     }
 }
 
@@ -3215,6 +3292,11 @@ async function renderizarTreinamentosDashboardOpr() {
         const res = await DBStore.getItem("simas_trainings");
         if (Array.isArray(res)) {
             rawTrainings = res;
+        }
+        // [CP1] Fallback direto ao Firebase se IndexedDB estiver vazio (Race Condition sync)
+        if (rawTrainings.length === 0 && typeof db !== 'undefined') {
+            const snap = await db.collection("simas_trainings").get();
+            rawTrainings = snap.docs.map(d => Object.assign({id: d.id}, d.data()));
         }
     } catch (e) {
         console.error("Erro ao carregar simas_trainings no OPR:", e);
@@ -3854,21 +3936,12 @@ const SnapshotRepository = {
     },
     getById: async function(id) {
         if (!id) return null; // Bloqueio defensivo para snapshotId indefinido/nulo
-        // --- INICIO FASE B1: FALLBACK LOCAL-FIRST ---
-        let localSnap = null;
-        try {
-            localSnap = await SimasDB.runTransaction('snapshots', 'readonly', (store) => store.get(id));
-        } catch(e) {
-            console.warn(`[SnapshotRepository] Falha ao ler IndexedDB para ${id}:`, e);
-        }
-
-        if (localSnap) {
-            return localSnap;
-        }
-
-        console.log(`[SnapshotRepository] Snapshot ${id} não encontrado localmente. Tentando fallback na nuvem...`);
+        // --- INICIO FASE B1: CLOUD-FIRST COM FALLBACK OFFLINE/LOCAL ---
         
-        if (typeof db !== 'undefined' && db) {
+        let cloudFetchSuccess = false;
+
+        // 1. Tenta consultar a Nuvem Primeiro (Fonte de Verdade)
+        if (typeof db !== 'undefined' && db && navigator.onLine !== false) {
             try {
                 const docRef = db.collection('opr_snapshots').doc(id.toString());
                 const docSnap = await docRef.get();
@@ -3878,30 +3951,54 @@ const SnapshotRepository = {
                     
                     // Validar estrutura basica
                     if (cloudSnap && cloudSnap.id === id && cloudSnap.data) {
-                        console.log(`[SnapshotRepository] Snapshot ${id} recuperado da nuvem com sucesso. Restaurando cache local...`);
+                        cloudFetchSuccess = true;
+                        console.log(`[SnapshotRepository] Snapshot ${id} recuperado da nuvem com sucesso. Reconciliando cache local...`);
                         
+                        // Atualiza/Reconcilia apenas este snapshot especifico no cache local
                         try {
                             await SimasDB.runTransaction('snapshots', 'readwrite', (store) => store.put(cloudSnap));
                         } catch(cacheErr) {
-                            console.warn(`[SnapshotRepository] Aviso: Nao foi possivel salvar o snapshot recuperado no cache local:`, cacheErr);
+                            console.warn(`[SnapshotRepository] Aviso: Nao foi possivel atualizar o cache local com a versao da nuvem:`, cacheErr);
                         }
                         
-                        return cloudSnap;
+                        return cloudSnap; // Retorna a versao atualizada
                     } else {
                         console.warn(`[SnapshotRepository] Snapshot ${id} na nuvem possui estrutura invalida.`);
                     }
                 } else {
-                    console.log(`[SnapshotRepository] Snapshot ${id} tambem nao existe na nuvem.`);
+                    cloudFetchSuccess = true;
+                    console.log(`[SnapshotRepository] Snapshot ${id} nao existe na nuvem. Possivel rascunho offline.`);
                 }
             } catch (cloudErr) {
-                console.error(`[SnapshotRepository] Falha ao consultar nuvem para ${id} (offline ou erro):`, cloudErr);
-                if (typeof showToast === 'function') {
-                    showToast("Não foi possível conectar à nuvem para recuperar este relatório.", "error");
-                }
+                console.warn(`[SnapshotRepository] Falha ao consultar nuvem para ${id} (offline/timeout). Utilizando fallback local.`, cloudErr);
             }
         }
+
+        // 2. Fallback Local (Offline ou Rascunho)
+        let localSnap = null;
+        try {
+            localSnap = await SimasDB.runTransaction('snapshots', 'readonly', (store) => store.get(id));
+        } catch(e) {
+            console.warn(`[SnapshotRepository] Falha ao ler IndexedDB para ${id}:`, e);
+        }
+
+        if (localSnap) {
+            if (!cloudFetchSuccess) {
+                console.log(`[SnapshotRepository] Retornando cache local como fallback offline para ${id}.`);
+                if (typeof showToast === 'function') {
+                    showToast("Relatorio aberto em modo offline (cache local).", "info");
+                }
+            } else {
+                console.log(`[SnapshotRepository] Retornando rascunho puramente offline (nao encontrado na nuvem) para ${id}.`);
+            }
+            return localSnap;
+        }
         
-        return null; // Mantem comportamento nativo para quando nao encontra em nenhum lugar
+        if (!cloudFetchSuccess && typeof showToast === 'function') {
+            showToast("Nao foi possivel conectar a nuvem para recuperar este relatorio e nao ha cache local.", "error");
+        }
+        
+        return null; 
         // --- FIM FASE B1 ---
     },
     create: async function(snapshot) {
@@ -4251,7 +4348,7 @@ async function syncOprFileToCloud(fileId) {
         }
         
         batch.set(docRef, {
-            fileId, oprId, name: name || 'unnamed_file', type: blob.type || type, size: blob.size || size,
+            fileId, oprId: oprId || null, name: name || 'unnamed_file', type: blob.type || type, size: blob.size || size,
             numChunks, createdAt: createdAt || new Date().toISOString(), module, itemId, slot,
             metadata: metadata || {}
         });
@@ -4443,12 +4540,22 @@ const OUVIDORIA_BRANCH_MAP = {
 
 const OuvidoriaRepository = {
     async fetchComplaints(branch, targetYear) {
+        const normalize = (str) => String(str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
         let filialOuvidoria = OUVIDORIA_BRANCH_MAP[branch] || branch;
-        const snapshot = await ouvidoriaDb.collection('complaints').where('branch', '==', filialOuvidoria).get();
+        const normTarget = normalize(filialOuvidoria);
+
+        // Otimizacao: buscar apenas do ano alvo, sem depender de match exato no banco
+        const snapshot = await ouvidoriaDb.collection('complaints')
+            .where('date', '>=', `${targetYear}-01-01`)
+            .where('date', '<=', `${targetYear}-12-31`)
+            .get();
+
         let results = [];
         snapshot.forEach(doc => {
             const data = doc.data();
-            if (data.date && data.date.startsWith(`${targetYear}-`)) {
+            // Filtrar localmente pela filial normalizada
+            // [CP2] Centralized OPR branch normalizer
+            if (normalize(data.branch) === normTarget) {
                 let statusVisual = "Status não mapeado";
                 if (data.status === "open") statusVisual = "Não Solucionada";
                 else if (data.status === "in_progress") statusVisual = "Em Tratativa";
@@ -4478,6 +4585,27 @@ const OuvidoriaRepository = {
 let qmRequestSequence = 0;
 // =====================================================================
 // ==================== CHECKPOINT 2.4 - ETAPA 2: HISTÓRICO LEITURA ====================
+
+
+// [CP2] Centralized OPR branch normalization function
+function normalizeOprBranch(branchName) {
+    if (!branchName) return "";
+    let norm = String(branchName)
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "") // Remove all diacritics (accents, tildes, cedillas)
+        .replace(/['"-?]/g, "")          // Remove common punctuation
+        .trim()
+        .toLowerCase();
+        
+    // [CP2] Aliases mappings mapped to standard OPR branch names
+    const ALIASES = {
+        'sjp prefeitura': 'sao jose dos pinhais',
+        'sjp': 'sao jose dos pinhais',
+        'gov valadares': 'governador valadares'
+    };
+    
+    return ALIASES[norm] || norm;
+}
 
 const OPR_BRANCHES = [
     { name: "Matriz", resp: "Júnia Oscarino", status: "Operante" },
@@ -5367,12 +5495,13 @@ async function createNewOpr() {
             
             // 5. Heranca da Agua Global
             if (snap.data && snap.data.aguaEmpilhadeiras && targetOpr.createdAt) {
-                if (isMesmoMes) {
+                const isMesmoAno = (newOprDate.getFullYear() === oldOprDate.getFullYear());
+                if (isMesmoAno) {
                     if (typeof structuredClone === 'function') aguaEmpilhadeirasHerdada = structuredClone(snap.data.aguaEmpilhadeiras);
                     else aguaEmpilhadeirasHerdada = JSON.parse(JSON.stringify(snap.data.aguaEmpilhadeiras));
-                    console.log(`[HERANÇA OPR] Água empilhadeiras herdada: true`);
+                    console.log(`[HERANÇA OPR] Água empilhadeiras herdada (mesmo ano): true`);
                 } else {
-                    console.log(`[HERANÇA OPR] Água empilhadeiras herdada: false`);
+                    console.log(`[HERANÇA OPR] Água empilhadeiras herdada (mesmo ano): false`);
                 }
             }
         }
@@ -5427,6 +5556,12 @@ async function createNewOpr() {
 
 async function persistCurrentOpr(options = { conclude: false, isAutoSave: false, savingOprId: null }) {
     if (!currentUser || !currentUser.permissions) return;
+    
+    // [CP1] Block save during data load
+    if (window.isOprLoading) {
+        console.warn("[OPR] Tentativa de salvar bloqueada: dados ainda estao carregando.");
+        return;
+    }
     if (options.conclude) {
         if (!currentUser.permissions.validate) {
             console.warn("[OPR] Persistência (Concluir) bloqueada. Role:", currentUser.role);
@@ -5565,11 +5700,18 @@ let meta = null;
         if(typeof showToast === 'function') showToast("Relatório Concluído com sucesso!", "success");
         if (typeof finalizeLupPersistence === 'function') finalizeLupPersistence();
         if (typeof finalizeMelhoriasPersistence === 'function') finalizeMelhoriasPersistence();
+        
+        if (typeof loadLupImagesForCache === 'function') await loadLupImagesForCache(oprOpeningSequence);
+        if (typeof loadMelhoriasImagesForCache === 'function') await loadMelhoriasImagesForCache(oprOpeningSequence);
+        
         cancelOprEdit();
     } else {
         if(!options.isAutoSave && typeof showToast === "function") showToast("Rascunho salvo com sucesso!", "success");
         if (typeof finalizeLupPersistence === 'function') finalizeLupPersistence();
         if (typeof finalizeMelhoriasPersistence === 'function') finalizeMelhoriasPersistence();
+        
+        if (typeof loadLupImagesForCache === 'function') await loadLupImagesForCache(oprOpeningSequence);
+        if (typeof loadMelhoriasImagesForCache === 'function') await loadMelhoriasImagesForCache(oprOpeningSequence);
     }
 }
 
@@ -5606,6 +5748,120 @@ async function concludeCurrentOpr() {
     }
 }
 
+async function reopenOpr(oprId) {
+    if (!oprId) return;
+
+    const btn = document.getElementById('btn-reopen-opr');
+    if (btn && btn.disabled) return; // Proteo contra duplo clique
+
+    let rawReason = prompt("Motivo da reabertura:");
+    if (rawReason === null) return;
+    
+    const reason = rawReason.trim();
+    if (!reason) {
+        alert("Motivo inválido. A operação foi cancelada.");
+        return;
+    }
+
+    const confirmMsg = "Este OPR já foi concluído. Antes da reabertura, uma cópia da versão atualmente concluída será preservada para rastreabilidade. Deseja continuar?";
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Reabrindo...';
+    }
+
+    try {
+        const meta = await OprHistoryRepository.getById(oprId);
+        if (!meta) throw new Error("Metadados do OPR não encontrados.");
+        
+        if (meta.status !== 'Concluído' && meta.status !== 'Finalizado' && meta.status !== 'Concludo') {
+            throw new Error("Este OPR não está concluído.");
+        }
+        
+        if (!meta.snapshotId) throw new Error("Este OPR não possui snapshotId associado.");
+
+        const snap = await SnapshotRepository.getById(meta.snapshotId);
+        if (!snap) throw new Error("Não foi possível carregar a verso concluída.");
+
+        let cloneData;
+        if (typeof structuredClone === 'function') {
+            cloneData = structuredClone(snap.data);
+        } else {
+            cloneData = JSON.parse(JSON.stringify(snap.data));
+        }
+
+        const newHistId = "snap-" + oprId + "-hist-" + Date.now();
+        
+        const snapshotHistorico = {
+            id: newHistId,
+            oprId: oprId,
+            createdAt: snap.createdAt,
+            updatedAt: snap.updatedAt,
+            data: cloneData,
+            historicalCopy: true,
+            sourceSnapshotId: meta.snapshotId,
+            archivedAt: new Date().toISOString(),
+            reopenReason: reason,
+            archivedBy: (typeof currentUser !== 'undefined' && currentUser && currentUser.name) ? currentUser.name : 'Desconhecido'
+        };
+
+        await SnapshotRepository.create(snapshotHistorico);
+
+        if (typeof logAction === 'function') {
+            const logMsg = `OPR ${oprId} reaberto para edição. Motivo: ${reason}. Verso anteriormente concluída preservada no snapshot histórico ${newHistId}.`;
+            logAction("REABERTURA_OPR", oprId, logMsg);
+        }
+
+        meta.status = "Em edição";
+
+        await OprHistoryRepository.update(meta.id, meta);
+
+        if (typeof oprHistoryDB !== 'undefined') {
+            const memIdx = oprHistoryDB.findIndex(r => r.id === oprId);
+            if (memIdx !== -1) {
+                oprHistoryDB[memIdx].status = meta.status;
+            }
+        }
+        
+        if (typeof volatileObj !== 'undefined' && volatileObj && volatileObj.id === oprId) {
+            volatileObj.status = meta.status;
+        }
+
+        if (typeof enableOprEditMode === 'function') {
+            enableOprEditMode();
+        }
+
+        const badgesContainer = document.getElementById('opr-header-badges');
+        if (badgesContainer) {
+            if (btn) btn.remove();
+            const badgeDivs = badgesContainer.querySelectorAll('div');
+            badgeDivs.forEach(div => {
+                if (div.innerText.includes('Conclu')) {
+                    div.innerHTML = '<i class="fa-solid fa-pen" style="color: #d97706;"></i> Em edição';
+                    div.style.background = '#fef3c7';
+                    div.style.borderColor = '#fcd34d';
+                    div.style.color = '#d97706';
+                }
+            });
+        }
+
+        if (typeof updateAutosaveStatusUI === 'function') updateAutosaveStatusUI('OPR Reaberto. Pronto para edição.');
+        if (typeof showToast === 'function') showToast("OPR reaberto com sucesso!", "success");
+
+    } catch(err) {
+        console.error("FALHA CRÍTICA NA REABERTURA:", err);
+        alert("Falha ao reabrir OPR: " + err.message);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-lock-open"></i> Reabrir';
+        }
+    }
+}
+
+
 async function openOprForm(id) {
     if (typeof flushOprAutoSave === 'function' && currentOprRecordId && currentOprRecordId !== id) {
         updateAutosaveStatusUI('Salvando relatório anterior...');
@@ -5619,7 +5875,7 @@ async function openOprForm(id) {
 
     try {
         const meta = await OprHistoryRepository.getById(id);
-        if (!meta) throw new Error("Metadados no encontrados.");
+        if (!meta) throw new Error("Metadados não encontrados.");
         
         let snap = null;
         if (meta.snapshotId) {
@@ -5702,30 +5958,41 @@ async function openOprForm(id) {
             <input type="text" value="${meta.responsible || ''}" ${isReadOnly} oninput="if(typeof volatileObj !== 'undefined') volatileObj.responsible = this.value; if(typeof markOprDirty==='function') markOprDirty();" style="${inputStyle}">
         </div>`;
 
-        badgesContainer.innerHTML = weekBadge + gestorBadge + statusBadge;
+                let reopenBadge = '';
+        if (meta.status === 'Concluído' || meta.status === 'Finalizado' || meta.status === 'Concludo') {
+            reopenBadge = `<button id="btn-reopen-opr" onclick="reopenOpr('${meta.id}')" title="Reabrir OPR para edição" style="margin-left: 8px; padding: 0 12px; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; background: #ffffff; color: #475569; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; box-sizing: border-box;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#ffffff'"><i class="fa-solid fa-lock-open"></i> Reabrir</button>`;
+        }
+        badgesContainer.innerHTML = weekBadge + gestorBadge + statusBadge + reopenBadge;
         }
         
+        // [CP1] Loading lock for OPR to prevent saving while fetching
+        window.isOprLoading = true;
+        if (typeof updateAutosaveStatusUI === 'function') updateAutosaveStatusUI('Carregando paineis principais...');
+
         if (typeof renderOnePageReport === 'function') renderOnePageReport();
         if (typeof renderLicencas === 'function') renderLicencas();
-if (typeof renderizarLUP === 'function') renderizarLUP();
+        if (typeof renderizarLUP === 'function') renderizarLUP();
         if (typeof renderizarMelhorias === 'function') renderizarMelhorias();
-if (typeof popularFiltrosQm === 'function') popularFiltrosQm();
-        if (typeof renderizarQm === 'function') renderizarQm();
-        if (typeof renderizarTreinamentosDashboardOpr === 'function') renderizarTreinamentosDashboardOpr();
+        if (typeof popularFiltrosQm === 'function') popularFiltrosQm();
+        
+        const syncPromises = [];
+        if (typeof renderizarQm === 'function') syncPromises.push(renderizarQm());
+        if (typeof renderizarTreinamentosDashboardOpr === 'function') syncPromises.push(renderizarTreinamentosDashboardOpr());
+        if (typeof renderizarNcsDashboardOpr === 'function') syncPromises.push(renderizarNcsDashboardOpr());
+        
         if (typeof renderizarTopProblemas === 'function') renderizarTopProblemas();
         if (typeof renderizar5S === 'function') renderizar5S();
-    // [CORRECAO AUTOSAVE FALSO] if (typeof markOprDirty === "function") markOprDirty();
-if (typeof renderizarNcsDashboardOpr === 'function') renderizarNcsDashboardOpr();
-    if (typeof renderizarCruz === 'function') renderizarCruz();
-    // [CORRECAO AUTOSAVE FALSO] if (typeof markOprDirty === "function") markOprDirty();
-    if (typeof calcularDiasSemAcidente === 'function') calcularDiasSemAcidente().catch(err => console.error("Erro ao atualizar seguranca:", err));
-    if (typeof renderizarEmpilhadeiras === 'function') renderizarEmpilhadeiras();
-    // [CORRECAO AUTOSAVE FALSO] if (typeof markOprDirty === "function") markOprDirty();
-if (typeof renderizarPiramide === 'function') renderizarPiramide();
-    // [CORRECAO AUTOSAVE FALSO] if (typeof markOprDirty === "function") markOprDirty();
-if (typeof renderizarGraficoAgua === 'function') renderizarGraficoAgua();
+        if (typeof renderizarCruz === 'function') renderizarCruz();
+        if (typeof calcularDiasSemAcidente === 'function') calcularDiasSemAcidente().catch(err => console.error("Erro ao atualizar seguranca:", err));
+        if (typeof renderizarEmpilhadeiras === 'function') renderizarEmpilhadeiras();
+        if (typeof renderizarPiramide === 'function') renderizarPiramide();
+        if (typeof renderizarGraficoAgua === 'function') renderizarGraficoAgua();
 
-        if (meta.status === 'Concludo' || meta.status === 'Finalizado') disableOprEditMode();
+        await Promise.allSettled(syncPromises);
+        window.isOprLoading = false;
+        if (typeof updateAutosaveStatusUI === 'function') updateAutosaveStatusUI('');
+
+        if (meta.status === 'Concluído' || meta.status === 'Finalizado') disableOprEditMode();
         else enableOprEditMode();
 
         const promises = [];
@@ -7403,7 +7670,8 @@ function openEditPOPModal(id) {
         document.getElementById("form-pop-tipo").value = pop.tipo || "POP";
         document.getElementById("form-pop-abrangencia").value = pop.abrangencia || "Global";
         document.getElementById("form-pop-area").value = pop.area;
-        document.getElementById("form-pop-responsavel").value = pop.responsavel;
+        let respNorm = (pop.responsavel && pop.responsavel.toUpperCase().includes("BRUN")) ? "BRUNO" : pop.responsavel;
+        document.getElementById("form-pop-responsavel").value = respNorm;
         document.getElementById("form-pop-status").value = pop.status;
         document.getElementById("form-pop-data-revisao").value = pop.dataRevisao;
         document.getElementById("form-pop-proxima-revisao").value = pop.proximaRevisao;
@@ -7438,22 +7706,39 @@ function openEditPOPModal(id) {
             activeEvidenciaFile = null;
             document.getElementById("uploaded-evidencia-info").style.display = "none";
             document.getElementById("upload-zone-evidencia").style.display = "flex";
-
-        activeCopiaNcFile = null;
-        existingCopiaNc = null;
-        document.getElementById("uploaded-copia-nc-info").style.display = "none";
-        document.getElementById("upload-zone-copia-nc").style.display = "flex";
-        document.getElementById("trash-copia-nc").style.display = "block";
-        document.getElementById("form-pop-copia-nc").value = "";
-
-        activePopHomologadoFile = null;
-        existingPopHomologado = null;
-        document.getElementById("uploaded-pop-homologado-info").style.display = "none";
-        document.getElementById("upload-zone-pop-homologado").style.display = "flex";
-        document.getElementById("trash-pop-homologado").style.display = "block";
-        document.getElementById("form-pop-pop-homologado").value = "";
-
         }
+
+        if (pop.copiaNaoControlada) {
+            existingCopiaNc = pop.copiaNaoControlada;
+            activeCopiaNcFile = null;
+            document.getElementById("upload-zone-copia-nc").style.display = "none";
+            document.getElementById("uploaded-copia-nc-info").style.display = "flex";
+            document.getElementById("uploaded-copia-nc-filename").innerText = existingCopiaNc.name;
+            document.getElementById("uploaded-copia-nc-filesize").innerText = existingCopiaNc.size || "";
+        } else {
+            existingCopiaNc = null;
+            activeCopiaNcFile = null;
+            document.getElementById("uploaded-copia-nc-info").style.display = "none";
+            document.getElementById("upload-zone-copia-nc").style.display = "flex";
+        }
+        if (!currentUser.permissions.edit) { document.getElementById("trash-copia-nc").style.display = "none"; }
+        else { document.getElementById("trash-copia-nc").style.display = "block"; }
+
+        if (pop.popHomologado) {
+            existingPopHomologado = pop.popHomologado;
+            activePopHomologadoFile = null;
+            document.getElementById("upload-zone-pop-homologado").style.display = "none";
+            document.getElementById("uploaded-pop-homologado-info").style.display = "flex";
+            document.getElementById("uploaded-pop-homologado-filename").innerText = existingPopHomologado.name;
+            document.getElementById("uploaded-pop-homologado-filesize").innerText = existingPopHomologado.size || "";
+        } else {
+            existingPopHomologado = null;
+            activePopHomologadoFile = null;
+            document.getElementById("uploaded-pop-homologado-info").style.display = "none";
+            document.getElementById("upload-zone-pop-homologado").style.display = "flex";
+        }
+        if (!currentUser.permissions.edit) { document.getElementById("trash-pop-homologado").style.display = "none"; }
+        else { document.getElementById("trash-pop-homologado").style.display = "block"; }
         
         document.getElementById("pop-modal-title").innerHTML = `<i class="fa-solid fa-file-pen"></i> Atualizar POP: ${pop.codigo}`;
         document.getElementById("btn-save-pop-submit").innerText = "Salvar Alterações";
@@ -7569,6 +7854,7 @@ async function savePOP(event) {
         }
 
         
+        const popToEdit = id ? pops[targetIndex] : null;
         let finalCopiaNc = popToEdit ? (popToEdit.copiaNaoControlada || null) : null;
         if (activeCopiaNcFile) {
             const savedId = await FileRepository.save(activeCopiaNcFile, { module: 'pop' });
@@ -7789,7 +8075,8 @@ function openDetailsModal(id) {
         }
         
         document.getElementById("details-area").innerText = pop.area;
-        document.getElementById("details-responsavel").innerText = pop.responsavel;
+        let respNormDetails = (pop.responsavel && pop.responsavel.toUpperCase().includes("BRUN")) ? "BRUNO" : pop.responsavel;
+        document.getElementById("details-responsavel").innerText = respNormDetails;
         document.getElementById("details-data-revisao").innerText = formatDate(pop.dataRevisao);
         document.getElementById("details-proxima-revisao").innerText = formatDate(pop.proximaRevisao);
         document.getElementById("details-observacoes").innerText = pop.observacoes || "Nenhuma observao ou justificativa documental inserida para este ciclo.";
@@ -9194,6 +9481,14 @@ function startNcListener() {
                 if (activeView === 'ncs') {
                     applyNcFilters();
                 }
+                
+                
+                // [CORRECAO CIRURGICA - OPR REFRESH RACE CONDITION]
+                // Se o listener foi invocado via OPR ou atualizou em background enquanto OPR está aberto,
+                // solicita o redesenho dos gráficos (a função possui trava de renderização se a div não existir).
+                if (typeof renderizarNcsDashboardOpr === 'function') {
+                    renderizarNcsDashboardOpr();
+                }
 
 
 
@@ -9344,6 +9639,38 @@ function renderOprNcLoadingState() {
 }
 
 function renderOprNcCharts(ncM, dqM, ncS, dqS, ncU, dqU) {
+    // [CP3] Atualizao dos KPIs Executivos
+    const elNcTotal = document.getElementById('opr-kpi-nc-total');
+    const elNcAbertas = document.getElementById('opr-kpi-nc-abertas');
+    const elNcFechadas = document.getElementById('opr-kpi-nc-fechadas');
+    const elDqTotal = document.getElementById('opr-kpi-dq-total');
+    const elDqAbertos = document.getElementById('opr-kpi-dq-abertos');
+    const elDqFechadas = document.getElementById('opr-kpi-dq-fechadas');
+
+    if (elNcTotal) {
+        // Regras:
+        // Total Mensal (Soma do array ncM filtrado por ano)
+        const totalNcMensal = ncM.reduce((a, b) => a + b, 0);
+        const totalDqMensal = dqM.reduce((a, b) => a + b, 0);
+        
+        // Status Abertas/Fechadas (Lidos diretamente dos acumuladores de status)
+        // Pendentes = Aberta + Em Tratamento
+        const ncAbertas = (ncS['Aberta'] || 0) + (ncS['Em Tratamento'] || 0);
+        const dqAbertos = (dqS['Aberta'] || 0) + (dqS['Em Tratamento'] || 0);
+        const ncFechadas = ncS['Fechada'] || 0;
+        const dqFechadas = dqS['Fechada'] || 0;
+        
+        elNcTotal.innerText = totalNcMensal;
+        elNcAbertas.innerText = ncAbertas;
+        elNcFechadas.innerText = ncFechadas;
+        elDqTotal.innerText = totalDqMensal;
+        elDqAbertos.innerText = dqAbertos;
+        
+        if (elDqFechadas) {
+            elDqFechadas.innerText = dqFechadas;
+        }
+    }
+
     const empty = ncM.every(v => v === 0) && dqM.every(v => v === 0) &&
                   Object.values(ncS).every(v => v === 0) && Object.values(dqS).every(v => v === 0) && ncU === 0 && dqU === 0;
                   
@@ -9371,9 +9698,19 @@ function renderOprNcCharts(ncM, dqM, ncS, dqS, ncU, dqU) {
                     borderRadius: 4
                 }]
             },
+            plugins: (window.ChartDataLabels ? [window.ChartDataLabels] : []),
             options: {
                 responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'end',
+                        color: '#333',
+                        font: { size: 10, weight: 'bold' },
+                        formatter: (val) => val > 0 ? val : ''
+                    }
+                },
                 scales: { x: { grid: { display: false } }, y: { display: false, beginAtZero: true, ticks: { stepSize: 1 }, grid: { display: false } } }
             }
         });
@@ -9393,9 +9730,19 @@ function renderOprNcCharts(ncM, dqM, ncS, dqS, ncU, dqU) {
                     borderRadius: 4
                 }]
             },
+            plugins: (window.ChartDataLabels ? [window.ChartDataLabels] : []),
             options: {
                 responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'end',
+                        color: '#333',
+                        font: { size: 10, weight: 'bold' },
+                        formatter: (val) => val > 0 ? val : ''
+                    }
+                },
                 scales: { x: { grid: { display: false } }, y: { display: false, beginAtZero: true, ticks: { stepSize: 1 }, grid: { display: false } } }
             }
         });
@@ -9436,9 +9783,17 @@ function renderOprNcCharts(ncM, dqM, ncS, dqS, ncU, dqU) {
                 labels: labels,
                 datasets: [{ data: data, backgroundColor: bg, borderWidth: 0 }]
             },
+            plugins: (window.ChartDataLabels ? [window.ChartDataLabels] : []),
             options: {
                 responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } } },
+                plugins: {
+                    legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } },
+                    datalabels: {
+                        color: '#fff',
+                        font: { size: 11, weight: 'bold' },
+                        formatter: (val) => val > 0 ? val : ''
+                    }
+                },
                 cutout: '60%'
             }
         });
@@ -9454,8 +9809,11 @@ async function renderizarNcsDashboardOpr() {
     let targetBranch = typeof currentOprBranch !== 'undefined' ? currentOprBranch : '';
     if (!targetBranch) return; 
     
-    const sAnoEl = document.getElementById('opr-nc-ano');
-    let selAno = sAnoEl ? sAnoEl.value : String(new Date().getFullYear());
+    let selAno = String(new Date().getFullYear());
+    if (typeof currentOprRecordId !== 'undefined' && currentOprRecordId) {
+        const oprRecord = oprHistoryDB.find(x => x.id === currentOprRecordId);
+        if (oprRecord) selAno = oprRecord.year ? String(oprRecord.year) : (oprRecord.ano ? String(oprRecord.ano) : selAno);
+    }
     
     oprNcRequestSequence++;
     const currentSeq = oprNcRequestSequence;
@@ -9463,8 +9821,21 @@ async function renderizarNcsDashboardOpr() {
     renderOprNcLoadingState();
     
     try {
-        const snapshot = await db.collection('nonConformities').where('filial', '==', targetBranch).get();
-        if (oprNcRequestSequence !== currentSeq) return; 
+        if (typeof ncs === 'undefined') {
+            console.warn("Array global 'ncs' não está disponível.");
+            return;
+        }
+
+        // [CP1] Espera controlada por dados reais sem loop arbitrario
+        if (ncs.length === 0 && typeof db !== 'undefined') {
+            const snap = await db.collection("nonConformities").get();
+            ncs = snap.docs.map(doc => Object.assign({id: doc.id}, doc.data()));
+            if (!ncUnsubscribe && typeof startNcListener === 'function') startNcListener();
+        }
+
+        // [CP2] Use centralized OPR normalization
+        const normalizedTarget = typeof normalizeOprBranch === 'function' ? normalizeOprBranch(targetBranch) : targetBranch;
+        const branchNcs = ncs.filter(nc => (typeof normalizeOprBranch === 'function' ? normalizeOprBranch(nc.filial) : nc.filial) === normalizedTarget);
         
         let ncMensalData = [0,0,0,0,0,0,0,0,0,0,0,0];
         let dqMensalData = [0,0,0,0,0,0,0,0,0,0,0,0];
@@ -9473,38 +9844,33 @@ async function renderizarNcsDashboardOpr() {
         let ncUnmapped = 0;
         let dqUnmapped = 0;
         
-        snapshot.forEach(doc => {
-            const item = doc.data();
-            
-            const isNc = item.tipo === "N\u00e3o Conformidade" || item.tipo === "Nao Conformidade";
+        branchNcs.forEach(item => {
+            // Se o módulo oficial não filtra tipo, tudo entra na contagem.
+            // Para mantermos os gráficos DQ separados, verificamos DQ, senão assumimos NC.
             const isDq = item.tipo === "Desvio de Qualidade";
+            const isNc = !isDq; // Todos os outros são contabilizados como NC para igualar à Aba NC
             
-            if (!isNc && !isDq) return;
-            
-            if (item.dataOcorrencia) {
+            // [CP1] Trava de ano do OPR para no misturar historico
+            if (item.dataOcorrencia && item.dataOcorrencia.startsWith(selAno + '-')) {
                 const parts = item.dataOcorrencia.split('-');
                 if (parts.length >= 2) {
-                    const ano = parts[0];
                     const mes = parts[1];
-                    
-                    if (ano === selAno) {
-                        const mIndex = parseInt(mes, 10) - 1;
-                        if (mIndex >= 0 && mIndex < 12) {
-                            if (isNc) ncMensalData[mIndex]++;
-                            if (isDq) dqMensalData[mIndex]++;
-                        }
-                        
-                        const st = item.status || 'Desconhecido';
-                        if (isNc) {
-                            if (ncStatusCount[st] !== undefined) ncStatusCount[st]++;
-                            else { ncUnmapped++; console.warn(`NC Status n\u00e3o mapeado: ID ${doc.id}, C\u00f3digo ${item.codigo}, Status ${st}`); }
-                        }
-                        if (isDq) {
-                            if (dqStatusCount[st] !== undefined) dqStatusCount[st]++;
-                            else { dqUnmapped++; console.warn(`DQ Status n\u00e3o mapeado: ID ${doc.id}, C\u00f3digo ${item.codigo}, Status ${st}`); }
-                        }
+                    const mIndex = parseInt(mes, 10) - 1;
+                    if (mIndex >= 0 && mIndex < 12) {
+                        if (isNc) ncMensalData[mIndex]++;
+                        if (isDq) dqMensalData[mIndex]++;
                     }
                 }
+            }
+            
+            const st = item.status || 'Desconhecido';
+            if (isNc) {
+                if (ncStatusCount[st] !== undefined) ncStatusCount[st]++;
+                else { ncUnmapped++; console.warn(`NC Status não mapeado: ID ${item.id}, Status ${st}`); }
+            }
+            if (isDq) {
+                if (dqStatusCount[st] !== undefined) dqStatusCount[st]++;
+                else { dqUnmapped++; console.warn(`DQ Status não mapeado: ID ${item.id}, Status ${st}`); }
             }
         });
         
@@ -9517,7 +9883,6 @@ async function renderizarNcsDashboardOpr() {
         }
     }
 }
-
 // --- FIM MÓDULO OPR NC ---
 
 function updateNcDashboard() {
@@ -9892,14 +10257,47 @@ async function saveNc(event) {
         } else {
             // Create
             if(!codigo) {
-                // Generate simple code if empty
                 codigo = await generateNcId(filial, dataOcorrencia);
             }
-            ncData.codigo = codigo;
-            ncData.createdAt = new Date().toISOString();
-            ncData.createdBy = currentUser.username || "Desconhecido";
             
-            await db.collection("nonConformities").add(ncData);
+            // --- CORREÇÃO DE CONCORRÊNCIA (RACE CONDITION) ---
+            // Usa transação com Document ID previsível para garantir unicidade sem sobrescrever
+            let success = false;
+            let currentCodigo = codigo;
+            
+            let baseMatch = currentCodigo.match(/^([A-Z]+)\s+(\d+)\/(\d{4})$/);
+            let pfx = baseMatch ? baseMatch[1] : (filial || "").substring(0,3).toUpperCase();
+            let seq = baseMatch ? parseInt(baseMatch[2], 10) : 1;
+            let ano = baseMatch ? baseMatch[3] : String(new Date().getFullYear());
+            
+            while (!success) {
+                // Força um ID único para esse código no Firestore
+                const safeDocId = `NC_${pfx}_${seq}_${ano}`;
+                const docRef = db.collection("nonConformities").doc(safeDocId);
+                
+                try {
+                    await db.runTransaction(async (transaction) => {
+                        const docSnap = await transaction.get(docRef);
+                        if (docSnap.exists) {
+                            throw new Error("ALREADY_EXISTS");
+                        }
+                        
+                        ncData.codigo = currentCodigo;
+                        ncData.createdAt = new Date().toISOString();
+                        ncData.createdBy = currentUser.username || "Desconhecido";
+                        
+                        transaction.set(docRef, ncData);
+                    });
+                    success = true;
+                } catch (err) {
+                    if (err.message === "ALREADY_EXISTS") {
+                        seq++; // Sequência já existe, auto-incrementa e tenta novamente
+                        currentCodigo = `${pfx} ${String(seq).padStart(3, '0')}/${ano}`;
+                    } else {
+                        throw err;
+                    }
+                }
+            }
             showToast("Não Conformidade registrada com sucesso!", "success");
         }
         
@@ -9919,12 +10317,30 @@ async function saveNc(event) {
 async function generateNcId(filial, dataOcorrencia) {
     const year = dataOcorrencia ? dataOcorrencia.substring(0,4) : String(new Date().getFullYear());
     
-    let prefix = (filial || "").substring(0,3).toUpperCase();
-    if (filial === "Matriz") prefix = "MTZ";
-    else if (filial === "Filial SC") prefix = "FSC";
-    else if (filial === "Filial SP") prefix = "FSP";
+    const normalizeStr = (str) => String(str || "").toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+    const fNorm = normalizeStr(filial);
     
-    const relevantNcs = ncs.filter(n => n.filial === filial && (n.dataOcorrencia || "").startsWith(year));
+    let prefix = (filial || "").substring(0,3).toUpperCase();
+    
+    const mapSiglas = {
+        "matriz": "MTZ",
+        "filial sc": "FSC",
+        "filial sp": "FSP",
+        "sao roque": "SR",
+        "sorocaba": "SC",
+        "camacari": "CAM",
+        "funeas": "PR",
+        "sjp prefeitura": "SJP",
+        "juatuba": "JUA",
+        "contagem": "CON",
+        "governador valadares": "GV"
+    };
+    
+    if (mapSiglas[fNorm]) {
+        prefix = mapSiglas[fNorm];
+    }
+    
+    const relevantNcs = ncs.filter(n => normalizeStr(n.filial) === fNorm && (n.dataOcorrencia || "").startsWith(year));
     
     let maxSeq = 0;
     for (const nc of relevantNcs) {
@@ -10146,6 +10562,62 @@ async function carregarTopProblemasDB() {
     }
 }
 
+// --- INICIO ALTERACAO: Sincronizacao de Top Problemas (Nuvem -> Local) ---
+async function sincronizarTopProblemas() {
+    if (typeof db === 'undefined' || !db) return;
+    try {
+        console.log("[TOP PROBLEMAS] Iniciando sincronizacao com Firebase...");
+        const snap = await db.collection('top_problemas').get();
+        
+        if (snap.empty) {
+            console.log("[TOP PROBLEMAS] Firebase vazio. IndexedDB local preservado (nao destrutivo).");
+            return;
+        }
+
+        await carregarTopProblemasDB(); // Garante que topProblemasDB esta populado
+
+        let mudou = false;
+        snap.forEach(doc => {
+            const data = doc.data();
+            const remoteObj = {
+                id: data.id || doc.id,
+                filial: data.filial,
+                ano: data.ano,
+                desc: data.desc,
+                dataAbertura: data.dataAbertura,
+                criticidade: data.criticidade,
+                resp: data.resp,
+                status: data.status,
+                evolucao: data.evolucao,
+                dataConclusao: data.dataConclusao
+            };
+
+            const localIdx = topProblemasDB.findIndex(p => p.id === remoteObj.id);
+            if (localIdx !== -1) {
+                // Merge/Atualiza
+                topProblemasDB[localIdx] = remoteObj;
+            } else {
+                // Insere novo
+                topProblemasDB.push(remoteObj);
+            }
+            mudou = true;
+        });
+
+        if (mudou) {
+            await DBStore.setItem('simas_top_problemas', topProblemasDB);
+            console.log(`[TOP PROBLEMAS] Sincronizacao concluida: ${snap.size} registros remotos reconciliados no cache local.`);
+            if (typeof renderizarTopProblemas === 'function') {
+                renderizarTopProblemas();
+            }
+        }
+
+    } catch (e) {
+        console.error("[TOP PROBLEMAS] Falha na sincronizacao:", e);
+    }
+}
+// --- FIM ALTERACAO ---
+
+
 async function renderizarTopProblemas() {
     await carregarTopProblemasDB();
 
@@ -10335,6 +10807,17 @@ async function salvarTopProblema() {
     
     try {
         await DBStore.setItem('simas_top_problemas', topProblemasDB);
+        
+        // --- INICIO ALTERACAO: Dual Write na Nuvem ---
+        if (typeof db !== 'undefined' && db) {
+            try {
+                await db.collection('top_problemas').doc(id.toString()).set(probObj);
+            } catch(cloudErr) {
+                console.warn(`Aviso: Falha ao salvar top problema na nuvem (Offline?):`, cloudErr);
+            }
+        }
+        // --- FIM ALTERACAO ---
+
         fecharModalTopProblema();
         renderizarTopProblemas();
         if (typeof showToast === 'function') showToast('Problema salvo com sucesso!', 'success');
@@ -10899,8 +11382,8 @@ function renderizarGraficoAguaCard(empIndex, canvasId) {
                     align: 'center',
                     anchor: 'center',
                     color: '#fff',
-                    formatter: function(val) { return val > 0 ? val : ''; },
-                    font: { weight: '800', size: 9 }
+                    formatter: function(val) { return val > 0 ? val + ' L' : ''; },
+                    font: { weight: '800', size: 11 }
                 }
             }]
         },
@@ -10915,7 +11398,7 @@ function renderizarGraficoAguaCard(empIndex, canvasId) {
                 },
                 x: {
                     grid: { display: false },
-                    ticks: { font: { size: 10, weight: '700' }, color: '#64748b' }
+                    ticks: { font: { size: 11, weight: '700' }, color: '#334155' }
                 }
             },
             plugins: {
@@ -11467,3 +11950,430 @@ if (document.readyState === 'loading') {
 }
 
 
+
+
+// --- AUXILIARY STICKY SCROLLBAR FOR POPS TABLE ---
+document.addEventListener('DOMContentLoaded', () => {
+    const tableContainer = document.getElementById('pops-table-container');
+    const tableId = document.getElementById('pops-table-id');
+    const stickyScrollbar = document.getElementById('pops-sticky-scrollbar');
+    const stickyContent = document.getElementById('pops-sticky-scrollbar-content');
+
+    if (tableContainer && tableId && stickyScrollbar && stickyContent) {
+        
+        const syncWidths = () => {
+            stickyContent.style.width = tableId.offsetWidth + 'px';
+        };
+        
+        if (window.ResizeObserver) {
+            new ResizeObserver(syncWidths).observe(tableId);
+        } else {
+            window.addEventListener('resize', syncWidths);
+            setInterval(syncWidths, 1000);
+        }
+        
+        let isSyncingLeft = false;
+        let isSyncingRight = false;
+        
+        tableContainer.addEventListener('scroll', () => {
+            if (!isSyncingLeft) {
+                isSyncingRight = true;
+                stickyScrollbar.scrollLeft = tableContainer.scrollLeft;
+            }
+            isSyncingLeft = false;
+        });
+        
+        stickyScrollbar.addEventListener('scroll', () => {
+            if (!isSyncingRight) {
+                isSyncingLeft = true;
+                tableContainer.scrollLeft = stickyScrollbar.scrollLeft;
+            }
+            isSyncingRight = false;
+        });
+        
+        const toggleStickyScrollbar = () => {
+            // Only show if the pops module is active/visible
+            const popsSection = document.getElementById('view-pops');
+            if (popsSection && !popsSection.classList.contains('active')) {
+                stickyScrollbar.style.display = 'none';
+                return;
+            }
+
+            const rect = tableContainer.getBoundingClientRect();
+            // Visible condition: Top is above viewport bottom, Bottom is below viewport bottom
+            const isPartiallyVisible = rect.top < window.innerHeight && rect.bottom > window.innerHeight;
+            
+            if (isPartiallyVisible && tableId.offsetWidth > tableContainer.offsetWidth) {
+                stickyScrollbar.style.display = 'block';
+                stickyScrollbar.style.position = 'fixed';
+                stickyScrollbar.style.bottom = '0';
+                stickyScrollbar.style.left = rect.left + 'px';
+                stickyScrollbar.style.width = rect.width + 'px';
+            } else {
+                stickyScrollbar.style.display = 'none';
+            }
+        };
+        
+        window.addEventListener('scroll', toggleStickyScrollbar);
+        window.addEventListener('resize', toggleStickyScrollbar);
+        
+        // Initial setup
+        setTimeout(() => {
+            syncWidths();
+            toggleStickyScrollbar();
+        }, 500);
+    }
+});
+
+
+// =========== DASHBOARD EXECUTIVO SGI ===========
+let chartDashNcs, chartDashReclamacoes, chartDashTreinamentos, chartDashPops;
+
+function setDashValue(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = val !== null ? val : '-';
+}
+function setDashLoader(id) {
+    setDashValue(id, '<i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem; opacity: 0.5;"></i>');
+}
+function toggleChartLoader(id, show) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = show ? 'flex' : 'none';
+}
+
+function formatComplaintStatus(status) {
+    if (status === "open") return "Não Solucionada";
+    if (status === "in_progress") return "Em Tratativa";
+    if (status === "closed") return "Solucionada";
+    if (status === "invalid") return "Não Procede";
+    return status || "Registrada";
+}
+
+async function loadExecutiveDashboard() {
+    if (document.getElementById('view-dashboard') && !document.getElementById('view-dashboard').classList.contains('active')) return;
+    
+    // Set Loaders
+    const loaders = [
+        'kpi-docs-val', 'kpi-trein-val', 'kpi-nc-val', 'kpi-melh-val',
+        'comp-recl-val', 'comp-lic-val', 'comp-lup-val',
+        'ana-doc-vig', 'ana-doc-prox', 'ana-doc-venc',
+        'ana-trein-perc', 'ana-trein-real', 'ana-trein-pend'
+    ];
+    loaders.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="opacity: 0.3;"></i>';
+    });
+    
+    ['loader-ana-ncs', 'loader-ana-docs', 'loader-ana-trein', 'loader-ana-recent'].forEach(id => toggleChartLoader(id, true));
+
+    const filialTarget = document.getElementById('dashboard-filial-filter') ? document.getElementById('dashboard-filial-filter').value : 'todas';
+    const normTarget = typeof normalizeOprBranch === 'function' && filialTarget !== 'todas' ? normalizeOprBranch(filialTarget) : filialTarget;
+
+    const occurrencesList = [];
+
+    // ==========================================
+    // FONTE: OUVIDORIA
+    // ==========================================
+    let reclamacoesLoaded = false;
+    let kpiReclamacoes = 0;
+    try {
+        if (typeof ouvidoriaDb !== 'undefined') {
+            const normalize = (str) => String(str || "").normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+            const filialOuvidoria = (typeof OUVIDORIA_BRANCH_MAP !== 'undefined') ? (OUVIDORIA_BRANCH_MAP[filialTarget] || filialTarget) : filialTarget;
+            const normTarget = normalize(filialOuvidoria);
+
+            const snapshot = await ouvidoriaDb.collection('complaints').get();
+            const allComplaints = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            let filteredComplaints = allComplaints;
+            if (filialTarget !== 'todas') {
+                filteredComplaints = allComplaints.filter(c => normalize(c.branch) === normTarget);
+            }
+            
+            kpiReclamacoes = filteredComplaints.length;
+            
+            // Push to occurrences
+            filteredComplaints.forEach(c => {
+                if (c.date) {
+                    occurrencesList.push({
+                        type: 'Reclamação',
+                        filial: c.branch || '-',
+                        desc: c.description ? c.description.substring(0, 80) + '...' : (c.category || 'Reclamação de Cliente'),
+                        status: formatComplaintStatus(c.status),
+                        dateRaw: new Date(c.date),
+                        dateStr: c.date.split('-').reverse().join('/')
+                    });
+                }
+            });
+            reclamacoesLoaded = true;
+        }
+    } catch(e) {
+        console.error("Erro Ouvidoria Dashboard:", e);
+    }
+
+    // ==========================================
+    // FONTE: POPS (DOCUMENTOS)
+    // ==========================================
+    let popsLoaded = false;
+    let totalDocs = 0, popVigentes = 0, popAvencer = 0, popVencidos = 0;
+    try {
+        if (typeof pops !== 'undefined') {
+            const today = new Date("2026-05-20");
+            pops.forEach(p => {
+                const fMatch = (filialTarget === 'todas') || ((p.filial || '').toLowerCase() === filialTarget.toLowerCase());
+                if (fMatch) {
+                    totalDocs++;
+                    
+                    if (p.proximaRevisao) {
+                        const nextReviewDate = new Date(p.proximaRevisao);
+                        const daysDiff = Math.ceil((nextReviewDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+                        
+                        if (daysDiff < 0 || p.status === 'VENCIDO') {
+                            popVencidos++;
+                        } else if (daysDiff <= 30) {
+                            popAvencer++;
+                        } else {
+                            popVigentes++;
+                        }
+                    } else {
+                        popVigentes++; 
+                    }
+                }
+            });
+            popsLoaded = true;
+        }
+    } catch(e) {
+        console.error("Erro POPs Dashboard:", e);
+    }
+
+    // ==========================================
+    // FONTE: TREINAMENTOS
+    // ==========================================
+    let treinamentosLoaded = false;
+    let totalValidos = 0, treinRealizados = 0, treinAtrasados = 0;
+    try {
+        let dashboardTrainings = [];
+        if (typeof db !== 'undefined') {
+            const snap = await db.collection("simas_trainings").get();
+            dashboardTrainings = snap.docs.map(doc => Object.assign({id: doc.id}, doc.data()));
+        }
+        
+        if (Array.isArray(dashboardTrainings)) {
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            
+            dashboardTrainings.forEach(t => {
+                const fMatch = (filialTarget === 'todas') || (t.filial === filialTarget || t.filial === 'Todas');
+                if (fMatch) {
+                    totalValidos++;
+                    if (t.dataRealizacao && t.dataRealizacao.trim() !== '') {
+                        treinRealizados++;
+                    } else if (t.dataPrevista) {
+                        const prevDate = new Date(t.dataPrevista + 'T00:00:00');
+                        if (prevDate < hoje) {
+                            treinAtrasados++;
+                        }
+                    }
+                }
+            });
+            treinamentosLoaded = true;
+        }
+    } catch(e) {
+        console.error("Erro Treinamentos Dashboard:", e);
+    }
+
+    // ==========================================
+    // FONTE: NCs / DQs
+    // ==========================================
+    let ncsLoaded = false;
+    let ncAbertas = 0, ncTratamento = 0, ncFechadas = 0, ncOutros = 0, kpiNcs = 0;
+    try {
+        let dashboardNcs = [];
+        if (typeof db !== 'undefined') {
+            const snap = await db.collection("nonConformities").get();
+            dashboardNcs = snap.docs.map(doc => Object.assign({id: doc.id}, doc.data()));
+        }
+        
+        if (Array.isArray(dashboardNcs)) {
+            dashboardNcs.forEach(nc => {
+                const normFilial = typeof normalizeStr === 'function' ? normalizeStr(nc.filial) : (nc.filial || '').toLowerCase();
+                const fMatch = (normTarget === 'todas') || (normFilial === normTarget);
+                if (fMatch) {
+                    if (nc.status === 'Aberta') ncAbertas++;
+                    else if (nc.status === 'Em Tratamento') ncTratamento++;
+                    else if (nc.status === 'Fechada') ncFechadas++;
+                    else ncOutros++;
+                    
+                    if (nc.dataOcorrencia) {
+                        occurrencesList.push({
+                            type: nc.tipo || 'NC',
+                            filial: nc.filial || '-',
+                            desc: (nc.identificacao || nc.codigo || 'No Conformidade').substring(0, 80),
+                            status: nc.status || 'Aberta',
+                            dateRaw: new Date(nc.dataOcorrencia),
+                            dateStr: nc.dataOcorrencia.split('-').reverse().join('/')
+                        });
+                    }
+                }
+            });
+            kpiNcs = ncAbertas + ncTratamento;
+            ncsLoaded = true;
+        }
+    } catch(e) {
+        console.error("Erro NCs Dashboard:", e);
+    }
+
+    // ==========================================
+    // FONTE: OPR (LUPs, Melhorias, Licencas)
+    // ==========================================
+    let oprLoaded = false;
+    let kpiMelhorias = 0, totalLups = 0, licencasCriticas = 0;
+    try {
+        if (typeof OprHistoryRepository !== 'undefined') {
+            const allMetas = await OprHistoryRepository.list(); // Gatilho de sincronizacao nativo
+            const latestOprByFilial = {};
+            
+            for (const r of allMetas) {
+                const fNorm = typeof normalizeStr === 'function' ? normalizeStr(r.branch) : (r.branch || '').toLowerCase();
+                const fMatch = (normTarget === 'todas') || (fNorm === normTarget);
+                
+                if (fMatch) {
+                    // Pre-calculate latest for licenses
+                    const oprTime = new Date(r.createdAt).getTime();
+                    if (!latestOprByFilial[fNorm] || oprTime > latestOprByFilial[fNorm].time) {
+                        latestOprByFilial[fNorm] = { time: oprTime, meta: r };
+                    }
+                    
+                    // LUPs and Melhorias are historical totals
+                    if (r.snapshotId && typeof SnapshotRepository !== 'undefined') {
+                        const snap = await SnapshotRepository.getById(r.snapshotId);
+                        if (snap && snap.data) {
+                            if (snap.data.melhoriasData) kpiMelhorias += snap.data.melhoriasData.length;
+                            if (snap.data.lupData) totalLups += snap.data.lupData.length;
+                        }
+                    }
+                }
+            }
+            
+            // Calc Licencas only for the latest OPRs
+            for (const fNorm in latestOprByFilial) {
+                const latest = latestOprByFilial[fNorm];
+                if (latest.meta.snapshotId && typeof SnapshotRepository !== 'undefined') {
+                    const snap = await SnapshotRepository.getById(latest.meta.snapshotId);
+                    if (snap && snap.data && snap.data.licencasData && typeof calcularDiasRestantes === 'function' && typeof calcularStatusLicenca === 'function') {
+                        snap.data.licencasData.forEach(lic => {
+                            const dr = calcularDiasRestantes(lic.dataValidade);
+                            if (dr !== null) {
+                                const sit = calcularStatusLicenca(dr, lic.statusAdmin).label;
+                                if (sit === 'VENCIDA' || sit === 'A VENCER') {
+                                    licencasCriticas++;
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+            oprLoaded = true;
+        }
+    } catch(e) {
+        console.error("Erro OPR Dashboard:", e);
+    }
+
+    // ==========================================
+    // RENDERIZAÇÃO DOM
+    // ==========================================
+    try {
+        // LINHA 1 (KPIs Principais)
+        setDashValue('kpi-docs-val', popsLoaded ? totalDocs : '-');
+        setDashValue('kpi-trein-val', treinamentosLoaded ? totalValidos : '-');
+        setDashValue('kpi-nc-val', ncsLoaded ? kpiNcs : '-');
+        // kpi-melh-val was removed from DOM but we can keep it here in case it exists
+        setDashValue('kpi-melh-val', oprLoaded ? kpiMelhorias : '-');
+
+        // LINHA 2 (Complementares)
+        setDashValue('comp-recl-val', reclamacoesLoaded ? kpiReclamacoes : '-');
+        setDashValue('comp-lic-val', oprLoaded ? licencasCriticas : '-');
+        setDashValue('comp-lup-val', oprLoaded ? totalLups : '-');
+
+        // LINHA 3 (Analíticos DOM)
+        setDashValue('ana-doc-vig', popsLoaded ? popVigentes : '-');
+        setDashValue('ana-doc-prox', popsLoaded ? popAvencer : '-');
+        setDashValue('ana-doc-venc', popsLoaded ? popVencidos : '-');
+        
+        setDashValue('ana-trein-total', treinamentosLoaded ? totalValidos : '-');
+        setDashValue('ana-trein-real', treinamentosLoaded ? treinRealizados : '-');
+        setDashValue('ana-trein-pend', treinamentosLoaded ? treinAtrasados : '-');
+        
+        if (document.getElementById('ncs-center-val')) {
+            document.getElementById('ncs-center-val').innerText = ncsLoaded ? (ncAbertas + ncTratamento + ncFechadas) : '-';
+        }
+
+        // CHARTS
+        if (ncsLoaded) {
+            const ctxNcs = document.getElementById('chart-ncs-status');
+            if (ctxNcs) {
+                if (typeof chartDashNcs !== 'undefined' && chartDashNcs) chartDashNcs.destroy();
+                window.chartDashNcs = new Chart(ctxNcs, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Aberta', 'Em Tratamento', 'Fechada'],
+                        datasets: [{
+                            data: [ncAbertas, ncTratamento, ncFechadas],
+                            backgroundColor: ['#A30D00', '#f59e0b', '#10b981'],
+                            borderWidth: 0,
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        layout: { padding: { top: 10, bottom: 10, left: 10, right: 10 } },
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15, font: { size: 11, family: 'Inter, sans-serif' } } }
+                        }
+                    }
+                });
+            }
+        }
+
+        // LINHA 4 (Ocorrências Recentes)
+        const recentBody = document.getElementById('recent-occurrences-body');
+        if (recentBody) {
+            if (ncsLoaded || reclamacoesLoaded) {
+                occurrencesList.sort((a, b) => b.dateRaw.getTime() - a.dateRaw.getTime());
+                const top5 = occurrencesList.slice(0, 5);
+                
+                recentBody.innerHTML = '';
+                if (top5.length === 0) {
+                    recentBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #94a3b8; font-style: italic;">Nenhuma ocorrência registrada para esta filial.</td></tr>';
+                } else {
+                    top5.forEach(o => {
+                        let statusColor = '#64748b'; // default
+                        let bgBadge = '#f1f5f9';
+                        if (o.status === 'Aberta' || o.status === 'Não Solucionada') { statusColor = '#A30D00'; bgBadge = '#fee2e2'; }
+                        else if (o.status === 'Em Tratamento' || o.status === 'Em Tratativa') { statusColor = '#92400e'; bgBadge = '#fef3c7'; }
+                        else if (o.status === 'Fechada' || o.status === 'Solucionada') { statusColor = '#166534'; bgBadge = '#dcfce7'; }
+                        
+                        recentBody.innerHTML += `
+                            <tr>
+                                <td style="font-weight: 600;">${o.type}</td>
+                                <td style="font-size: 0.8rem; font-weight: 500; color: #475569;">${o.filial || '-'}</td>
+                                <td>${o.desc}</td>
+                                <td><span style="background: ${bgBadge}; color: ${statusColor}; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">${o.status}</span></td>
+                                <td>${o.dateStr}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            } else {
+                recentBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #A30D00;">Erro ao carregar ocorrências.</td></tr>';
+            }
+        }
+
+    } catch(e) {
+        console.error("Erro na renderização do Dashboard SGI:", e);
+    } finally {
+        ['loader-ana-ncs', 'loader-ana-docs', 'loader-ana-trein', 'loader-ana-recent'].forEach(id => toggleChartLoader(id, false));
+    }
+}
