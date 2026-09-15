@@ -1798,6 +1798,7 @@ window.qmChartTipo = new Chart(ctxTipo, {
                 },
                 plugins: [qmBarValueLabels],
                 options: {
+                    animation: false,
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
@@ -1862,7 +1863,9 @@ window.qmChartStatus = new Chart(ctxStatus, {
                 },
                 plugins: [qmDoughnutValueLabels],
                 options: {
+                    animation: false,
                     responsive: true,
+                    maintainAspectRatio: false,
                     maintainAspectRatio: false,
                     plugins: {
                         legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11, family: "'Montserrat', sans-serif" } } }
@@ -5955,8 +5958,8 @@ async function openOprForm(id) {
     // [CORRECAO AUTOSAVE FALSO] if (typeof markOprDirty === "function") markOprDirty();
         if (typeof renderizarMelhorias === 'function') renderizarMelhorias();
     // [CORRECAO AUTOSAVE FALSO] if (typeof markOprDirty === "function") markOprDirty();
-if (typeof popularFiltrosQm === 'function') popularFiltrosQm();
-        if (typeof renderizarQm === 'function') renderizarQm();
+// if (typeof popularFiltrosQm === 'function') popularFiltrosQm(); [REDUNDANT REMOVED]
+        // if (typeof renderizarQm === 'function') renderizarQm(); [REDUNDANT REMOVED]
         if (typeof renderizarTreinamentosDashboardOpr === 'function') renderizarTreinamentosDashboardOpr();
         if (typeof renderizarTopProblemas === 'function') renderizarTopProblemas();
         if (typeof renderizar5S === 'function') renderizar5S();
@@ -9374,12 +9377,10 @@ function getWeekNumber(d) {
     return weekNo;
 }
 
-function exportOprPdf(id) {
+async function exportOprPdf(id) {
     // Abre e depois imprime
-    openOprForm(id);
-    setTimeout(() => {
-        window.print();
-    }, 500);
+    await openOprForm(id);
+    window.print();
 }
 
 function cancelOprEdit() {
@@ -9744,6 +9745,14 @@ function renderOprNcCharts(ncM, dqM, ncS, dqS, ncU, dqU) {
 
     oprNcStatusChart = buildStatusChart(oprNcStatusChart, 'chart-opr-nc-status', ncS, ncU);
     oprDqStatusChart = buildStatusChart(oprDqStatusChart, 'chart-opr-dq-status', dqS, dqU);
+}
+
+
+function normalizeOprBranch(branch) {
+    if (branch === "São Jose dos Pinhais" || branch === "São Jose dos Pinhais" || branch === "SJP Prefeitura") {
+        return "SJP Prefeitura";
+    }
+    return branch;
 }
 
 async function renderizarNcsDashboardOpr() {
