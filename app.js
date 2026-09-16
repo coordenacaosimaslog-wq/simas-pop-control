@@ -9382,6 +9382,58 @@ async function exportOprPdf(id) {
     await openOprForm(id);
     window.print();
 }
+async function exportOprPng(id) {
+    // Abre e aguarda carregamento
+    await openOprForm(id);
+    
+    // Obtem metadados para compor o nome
+    let branch = "Filial";
+    let mes = "Mes";
+    let ano = "Ano";
+    
+    try {
+        if (typeof volatileObj !== 'undefined' && volatileObj && volatileObj.branch) {
+            branch = volatileObj.branch;
+            if (volatileObj.year) ano = volatileObj.year;
+            else if (volatileObj.ano) ano = volatileObj.ano;
+        }
+        
+        // Pega o ms do filtro Q&M que est sincronizado
+        const sMes = document.getElementById('qm-mes');
+        if (sMes && sMes.options.length > 0 && sMes.selectedIndex >= 0) {
+            mes = sMes.options[sMes.selectedIndex].text;
+        }
+    } catch(e) {
+        console.error("Erro extraindo metas para PNG:", e);
+    }
+    
+    // Pequeno timeout para garantir que grficos terminem de renderizar na DOM
+    setTimeout(async () => {
+        const container = document.getElementById('opr-main-content');
+        if (!container) return;
+        
+        try {
+            const canvas = await html2canvas(container, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: "#ffffff",
+                logging: false
+            });
+            
+            const imgData = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = imgData;
+            link.download = `OnePage_${branch}_${mes}_${ano}.png`.replace(/\s+/g, '_');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch(err) {
+            console.error("Erro no html2canvas:", err);
+            alert("Falha ao gerar a imagem PNG.");
+        }
+    }, 500);
+}
+
 
 function cancelOprEdit() {
     const historyList = document.getElementById('opr-history-list');
